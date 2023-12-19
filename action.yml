@@ -1,0 +1,143 @@
+name: 'Build and Deploy'
+description: 'Unique step to Build and Deploy'
+inputs:
+  # ACR
+  ACR_USERNAME:
+    description: "user de acr"
+    required: true
+  ACR_PASSWORD:
+    description: "passwrd de acr"
+    required: true
+  ACR_NAME:
+    description: "nommbre del acr"
+    required: true
+  ACR_FULL_NAME:
+    description: "nombre del acr con azurecr.io"
+    required: true
+
+  # App
+  appName:
+    description: "Nombre de la aplicacion (dentro del proyecto)"
+    required: true
+  teamProject:
+    description: "Nombre del proyecto/equipo"
+    required: true
+  appVersion:
+    description: "tag para subir imagen"
+    required: true
+  namespace:
+    description: "nombre de namespaces"
+    required: false
+    default: ""
+  environment:
+    description: "nombre de environment"
+    required: false
+    default: ""
+
+  # Values
+  helmRepo:
+    description: "Repositorio de helm"
+    required: false
+    default: "infrastructure-services/poc-orleans"
+  helmRepoRef:
+    description: "Ref del repositorio de Helm"
+    required: false
+    default: "main"
+  fileValuesPath:
+    description: "path archivo de values.yaml"
+    required: true
+  GITHUB_HELMREPO_TOKEN:
+    description: "Token para descargar el codigo de templates HELM"
+    required: true
+  APPS_CERTIFICATE:
+    description: "Certificado para el dominio de apps en ARO"
+    required: false
+    default: ""
+  APPS_CA_CERTIFICATE:
+    description: "Certificado de la CA"
+    required: false
+    default: ""
+  APPS_KEY_CERTIFICATE:
+    description: "Certificado ARO Key"
+    required: false
+    default: ""
+
+  # HELM
+  helmChartVersionLatest:
+    description: "VersionHelm"
+    required: true
+  clusterFqdn:
+     description: "FQDN para pasarle a helm"
+     required: true
+    
+  # ArgoCD
+  ARGO_USERNAME:
+    description: "usuario de ARgocd"
+    required: true
+  ARGO_PASSWORD:
+    description: "pass de ARgocd"
+    required: true
+  ARGO_URL:
+    description: "url de ARgocd"
+    required: true
+
+outputs:
+  name_environment: 
+    description: "Nombre del environment"
+    value: ${{ steps.setOutputs.outputs.environment }}
+
+runs:
+  using: "composite"
+  steps:
+      - name: Set Outputs
+        id: setOutputs
+        shell: bash
+        run: |
+          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+
+      - name: Generate values.yaml
+        id: value
+        uses: infrastructure-services/actions@build-values
+        with:
+          appName: ${{ inputs.appName }}
+          teamProject: ${{ inputs.teamProject }}
+          namespace: ${{ inputs.namespace }}
+          clusterFqdn: ${{ inputs.clusterFqdn }}
+          fileValuesPath: ${{ inputs.fileValuesPath }}
+          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
+          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
+          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
+          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
+          helmRepoRef: ${{ inputs.helmRepoRef }}
+          helmRepo: ${{ inputs.helmRepo }}
+      
+      - name: build paquete helm.
+        id: helm
+        uses: infrastructure-services/actions@build-helm
+        with:
+          appName: ${{ inputs.appName }}
+          teamProject: ${{ inputs.teamProject }}
+          namespace: ${{ inputs.namespace }}
+          appVersion: ${{ inputs.appVersion }}
+          helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+          
+      - name: Argo deploy 🚀
+        id: argo
+        uses: infrastructure-services/actions@sync-argo
+        with:
+          appName: ${{ inputs.appName }}
+          teamProject: ${{ inputs.teamProject }}
+          namespace: ${{ inputs.namespace }}
+          appVersion: ${{ inputs.appVersion }}
+          helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+          ACR_NAME: ${{ inputs.ACR_NAME }}
+          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
+          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
+          ARGO_URL: ${{inputs.ARGO_URL}}
+          environment: ${{ inputs.environment }}

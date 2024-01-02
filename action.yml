@@ -1,7 +1,6 @@
 name: 'Container Vulnerability Scan'
 description: 'Step to Scan Vulnerability in docker image generate in this process'
 inputs:
-  # ACR
   appName:
     description: "nombre de aplicación"
     required: true
@@ -18,5 +17,11 @@ inputs:
 runs:
   using: "composite"
   steps:
+      - run: |
+          echo "appName: ${{ inputs.appName }}"
+          echo "teamProject: ${{ inputs.teamProject }}"
+          echo "appVersion: ${{ inputs.appVersion }}"
+          echo "registry: ${{ inputs.registry }}"
+        shell: bash
       - run: echo "✅ Success" 
         shell: bash

@@ -1,5 +1,5 @@
-name: 'Integration Test'
-description: 'Step to run automated integration tests'
+name: 'Security Test'
+description: 'Step to run automated security tests'
 inputs:
   appName:
     description: "nombre de aplicación"

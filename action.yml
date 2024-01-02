@@ -38,11 +38,11 @@ inputs:
   helmRepo:
     description: "Repositorio de helm"
     required: false
-    default: "infrastructure-services/poc-orleans"
+    default: "infrastructure-services/manifiestos-infra-mcloud"
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "main"
+    default: "infra-linux-infra-mcloud-prod"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true

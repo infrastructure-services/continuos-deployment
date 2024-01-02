@@ -1,14 +1,19 @@
-name: 'Build and Deploy'
-description: 'Unique step to Build and Deploy'
+name: 'Container Vulnerability Scan'
+description: 'Step to Scan Vulnerability in docker image generate in this process'
 inputs:
   # ACR
-  sonar_url:
-    description: "Url SonarQube"
+  appName:
+    description: "nombre de aplicación"
     required: true
-  sonar_token:
-    description: "Token de acceso SonarQube"
+  teamProject:
+    description: "nombre de proyecto"
     required: true
-
+  appVersion:
+    description: "Versión de la aplicación"
+    required: true
+  registry:
+    descripción: "Container Registry Name"
+    required: true
 
 runs:
   using: "composite"

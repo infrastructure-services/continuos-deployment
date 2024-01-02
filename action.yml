@@ -1,5 +1,5 @@
-name: 'Container Vulnerability Scan'
-description: 'Step to Scan Vulnerability in docker image generate in this process'
+name: 'Functional Test'
+description: 'Step to run automated functional tests'
 inputs:
   appName:
     description: "nombre de aplicación"
@@ -10,10 +10,12 @@ inputs:
   appVersion:
     description: "Versión de la aplicación"
     required: true
-  registry:
-    descripción: "Container Registry Name"
+  owner:
+    descripción: "Organization Name"
     required: true
-
+  repo:
+    descripción: "Repository Name"
+    required: true
 runs:
   using: "composite"
   steps:
@@ -21,7 +23,8 @@ runs:
           echo "appName: ${{ inputs.appName }}"
           echo "teamProject: ${{ inputs.teamProject }}"
           echo "appVersion: ${{ inputs.appVersion }}"
-          echo "registry: ${{ inputs.registry }}"
+          echo "owner: ${{ inputs.owner }}"
+          echo "repo: ${{ inputs.repo }}"
         shell: bash
       - run: echo "✅ Success" 
         shell: bash

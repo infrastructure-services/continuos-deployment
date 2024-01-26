@@ -70,6 +70,7 @@ runs:
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
 
     - name: "Pull-Tag-Push imagen"
+      if: steps.version.outputs.version != ''
       id: pullImage
       run: |
         echo "Pull imagen"
@@ -79,6 +80,7 @@ runs:
       shell: bash
 
     - name: "Annotation Version"
+      if: steps.version.outputs.version != ''
       shell: bash
       run: |
         echo "Annotation Version"

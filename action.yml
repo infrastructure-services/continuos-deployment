@@ -70,22 +70,22 @@ runs:
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
 
     - name: "Pull-Tag-Push imagen"
-      if: steps.version.outputs.version != ''
+      if: steps.version.outputs.new-version != ''
       id: pullImage
       run: |
         echo "Pull imagen"
         docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}}
-        docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.version }}
-        docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.version }}
+        docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
+        docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
       shell: bash
 
     - name: "Annotation Version"
-      if: steps.version.outputs.version != ''
+      if: steps.version.outputs.new-version != ''
       shell: bash
       run: |
         echo "Annotation Version"
-        echo "::notice::Version Latest: ${{ steps.version.outputs.version }}"
-        echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.version }}"
+        echo "::notice::Version Latest: ${{ steps.version.outputs.new-version }}"
+        echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}"
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v3

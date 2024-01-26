@@ -38,11 +38,11 @@ inputs:
   helmRepo:
     description: "Repositorio de helm"
     required: false
-    default: "infrastructure-services/manifiesto-cd"
+    default: "infrastructure-services/manifiestos-infra-mcloud"
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "onprem"
+    default: "infra-linux-infra-mcloud-prod"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
@@ -97,7 +97,7 @@ runs:
 
       - name: Generate values.yaml
         id: value
-        uses: ./.github/actions/build-values.yml
+        uses: infrastructure-services/actions@build-values
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -113,7 +113,7 @@ runs:
       
       - name: build paquete helm.
         id: helm
-        uses: ./.github/actions/build-helm
+        uses: infrastructure-services/actions@build-helm
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -126,7 +126,7 @@ runs:
           
       - name: Argo deploy 🚀
         id: argo
-        uses: ./.github/actions/sync-argo
+        uses: infrastructure-services/actions@sync-argo
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

@@ -88,7 +88,7 @@ runs:
       uses: peter-evans/create-pull-request@v3
       if: github.ref == 'refs/heads/hotfix'
       with:
-        token: ${{ secrets.GITHUB_TOKEN }} # Usa el token secreto de GitHub
+        token: ${{ inputs.github_token }} # Usa el token secreto de GitHub
         commit-message: Hotfix applied
         title: Apply hotfix to main
         body: This is an automated PR to apply hotfix changes to the main branch.

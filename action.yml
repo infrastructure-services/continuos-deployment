@@ -73,9 +73,9 @@ runs:
       id: pullImage
       run: |
         echo "Pull imagen"
-        docker pull ${{ inputs.ACR_FULL_NAME }}/${{ inputs.teamProject }}/${{ inputs.appName }}:${{ inputs.appVersion }}
-        docker tag ${{ inputs.ACR_FULL_NAME }}/${{ inputs.teamProject }}/${{ inputs.appName }}:${{ inputs.appVersion }} ${{ inputs.ACR_FULL_NAME }}/${{ inputs.teamProject }}/${{ inputs.appName }}:${{ steps.version.outputs.version }}
-        docker push ${{ inputs.ACR_FULL_NAME }}/${{ inputs.teamProject }}/${{ inputs.appName }}:${{ steps.version.outputs.version }}
+        docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}}
+        docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.version }}
+        docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.version }}
       shell: bash
 
     - name: "Annotation Version"
@@ -83,6 +83,7 @@ runs:
       run: |
         echo "Annotation Version"
         echo "::notice::Version Latest: ${{ steps.version.outputs.version }}"
+        echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.version }}"
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v3

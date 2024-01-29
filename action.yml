@@ -86,7 +86,12 @@ runs:
         echo "Annotation Version"
         echo "::notice::Version Latest: ${{ steps.version.outputs.new-version }}"
         echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}"
-
+    
+    - name: Checkout
+      uses: actions/checkout@v3.5.0
+      with:
+        fetch-depth: 0
+   
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v3
       if: github.ref == 'refs/heads/hotfix'

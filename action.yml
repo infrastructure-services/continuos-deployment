@@ -96,7 +96,7 @@ runs:
         title: Apply hotfix to main
         body: This is an automated PR to apply hotfix changes to the main branch.
         base: main # Rama base a la que se dirige el PR
-        branch: ${{ github.head_ref }} # Utiliza la rama actual del workflow
+        branch: "hotfix-apply-${{ github.run_number }}" # Nombre explícito de la rama del PR
 
     - run: echo "✅ Success"
       shell: bash

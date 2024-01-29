@@ -98,7 +98,7 @@ runs:
       with:
         token: ${{ inputs.github_token }} # Usa el token secreto de GitHub
         commit-message: Hotfix applied
-        title: Apply hotfix to main
+        title: Apply hotfix to main | hotfix-apply-${{ github.run_number }}
         body: This is an automated PR to apply hotfix changes to the main branch.
         base: main # Rama base a la que se dirige el PR
         branch: "hotfix-apply-${{ github.run_number }}" # Nombre explícito de la rama del PR

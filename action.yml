@@ -114,7 +114,7 @@ runs:
         shell: bash
         run: |
           ls -l
-          sed -i "s/targetRevision: .*/targetRevision: ${{ inputs.helmChartVersionLatest }}-${{ inputs.environment }}/" overlays/${{ inputs.environment }}/${{ inputs.appName }}/patch-values.yaml
+          sed -i "s/targetRevision: .*/targetRevision: ${{ inputs.helmChartVersionLatest }}/" overlays/${{ inputs.environment }}/${{ inputs.appName }}/patch-values.yaml
           cat overlays/${{ inputs.environment }}/${{ inputs.appName }}/patch-values.yaml
           git diff --exit-code || echo "changes=true" >> $GITHUB_OUTPUT
           
@@ -124,5 +124,5 @@ runs:
         run: |
           git config --global user.name '${{ inputs.GHCR_USERNAME }}'
           git config --global user.email '${{ inputs.GHCR_USERNAME }}@users.noreply.github.com'
-          git commit -am "Updated Helm release version to ${{ inputs.helmChartVersionLatest }}-${{ inputs.environment }}"
+          git commit -am "Updated Helm release version to ${{ inputs.helmChartVersionLatest }}"
           git push

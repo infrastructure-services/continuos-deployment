@@ -101,6 +101,7 @@ runs:
           helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
           GHCR_USERNAME: ${{ inputs.GHCR_USERNAME }}
           GHCR_PASSWORD: ${{ inputs.GHCR_PASSWORD }}
+          GHCR_PAT: ${{ inputs.GHCR_PAT }}
 
       - name: Checkout Repository
         uses: actions/checkout@v4

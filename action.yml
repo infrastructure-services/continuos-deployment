@@ -1,18 +1,18 @@
 name: 'Build and Deploy'
 description: 'Unique step to Build and Deploy'
 inputs:
-  # ACR
-  ACR_USERNAME:
+  # GHCR
+  GHCR_USERNAME:
     description: "user de acr"
     required: true
-  ACR_PASSWORD:
+  GHCR_PASSWORD:
     description: "passwrd de acr"
     required: true
-  ACR_NAME:
-    description: "nommbre del acr"
-    required: true
-  ACR_FULL_NAME:
+  GHCR_REGISTRY:
     description: "nombre del acr con azurecr.io"
+    required: true
+  GHCR_PAT:
+    description: "PAT"
     required: true
 
   # App
@@ -33,6 +33,12 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
+  chartFolder:
+    description: 'Nombre de folder del chart de Helm'
+    default: 'pythonChart'
+  chartName:
+    description: 'Nombre de chart de Helm'
+    default: 'python-chart'
 
   # Values
   helmRepo:
@@ -49,36 +55,10 @@ inputs:
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
-    required: false
-    default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
-    required: false
-    default: ""
 
   # HELM
   helmChartVersionLatest:
     description: "VersionHelm"
-    required: true
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
-    
-  # ArgoCD
-  ARGO_USERNAME:
-    description: "usuario de ARgocd"
-    required: true
-  ARGO_PASSWORD:
-    description: "pass de ARgocd"
-    required: true
-  ARGO_URL:
-    description: "url de ARgocd"
     required: true
 
 outputs:
@@ -97,47 +77,50 @@ runs:
 
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/actions@build-values
+        uses: infrastructure-services/actions@build-values-2
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
           namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
+          appVersion: ${{ inputs.appVersion }}
           fileValuesPath: ${{ inputs.fileValuesPath }}
           GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
           helmRepoRef: ${{ inputs.helmRepoRef }}
           helmRepo: ${{ inputs.helmRepo }}
       
       - name: build paquete helm.
         id: helm
-        uses: infrastructure-services/actions@build-helm
+        uses: infrastructure-services/actions@build-helm-2
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
           namespace: ${{ inputs.namespace }}
           appVersion: ${{ inputs.appVersion }}
+          chartFolder: ${{ inputs.chartFolder }}
+          chartName: ${{ inputs.chartName }}
           helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+          GHCR_USERNAME: ${{ inputs.GHCR_USERNAME }}
+          GHCR_PASSWORD: ${{ inputs.GHCR_PASSWORD }}
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          repository: cortiz2024/test_image
+          token: ${{ inputs.GHCR_PAT }}
+
+      - name: Update Helm release version on Argocd Application
+        id: change_helm_chart_version
+        shell: bash
+        run: |
+          sed -i "s/targetRevision: .*/targetRevision: ${{ inputs.helmChartVersionLatest }}-${{ inputs.environment }}/" overlays/${{ inputs.environment }}/${{ inputs.appName }}/patch-values.yaml
+          cat overlays/${{ inputs.environment }}/${{ inputs.appName }}/patch-values.yaml
+          git diff --exit-code || echo "changes=true" >> $GITHUB_OUTPUT
           
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/actions@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
+      - name: Commit and push changes
+        if: ${{ steps.change_helm_chart_version.outputs.changes == 'true' }}
+        shell: bash
+        run: |
+          git config --global user.name '${{ inputs.GHCR_USERNAME }}'
+          git config --global user.email '${{ inputs.GHCR_USERNAME }}@users.noreply.github.com'
+          git commit -am "Updated Helm release version to ${{ inputs.helmChartVersionLatest }}-${{ inputs.environment }}"
+          git push

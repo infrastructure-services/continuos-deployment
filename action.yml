@@ -85,6 +85,9 @@ outputs:
   name_environment: 
     description: "Nombre del environment"
     value: ${{ steps.setOutputs.outputs.environment }}
+  url_environment:
+    description: "URL del environment"
+    value: ${{ steps.setOutputs.outputs.url }}
 
 runs:
   using: "composite"
@@ -94,6 +97,7 @@ runs:
         shell: bash
         run: |
           echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}"
 
       - name: Generate values.yaml
         id: value

@@ -99,6 +99,18 @@ runs:
           echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
           echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}"
 
+      - name: Generate helm version
+        uses: actions/github-script@v7
+        id: helmversion
+        with:
+          script: |
+            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
+            if (!helmChartVersionLatest.includes('-')) {
+                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
+            }
+            return helmChartVersionLatest
+          result-encoding: string
+          
       - name: Generate values.yaml
         id: value
         uses: infrastructure-services/actions@build-values
@@ -123,7 +135,7 @@ runs:
           teamProject: ${{ inputs.teamProject }}
           namespace: ${{ inputs.namespace }}
           appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
           ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
           ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
           ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
@@ -136,7 +148,7 @@ runs:
           teamProject: ${{ inputs.teamProject }}
           namespace: ${{ inputs.namespace }}
           appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
           ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
           ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
           ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}

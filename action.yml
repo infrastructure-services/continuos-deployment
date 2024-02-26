@@ -25,7 +25,10 @@ inputs:
   appVersion:
     description: "tag para subir imagen"
     required: true
-
+  matrix_deploy:
+    description: "deploy en multiples ambientes"
+    required: false
+    default: "[]"
   # Values
   github_token:
     description: "Token para descargar el codigo de templates HELM"
@@ -74,18 +77,27 @@ runs:
       id: pullImage
       run: |
         echo "Pull imagen"
-        docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}}
-        docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
-        docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
-      shell: bash
-
-    - name: "Annotation Version"
-      if: steps.version.outputs.new-version != ''
-      shell: bash
-      run: |
-        echo "Annotation Version"
         echo "::notice::Version Latest: ${{ steps.version.outputs.new-version }}"
-        echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}"
+
+        IFS=',' read -r -a deployments <<< "${{ inputs.matrix_deploy }}"
+        # Limpia y prepara el array de aplicaciones
+        deployments=($(for deployment in "${deployments[@]}"; do echo "$deployment" | xargs | sed 's/[][]//g'; done))
         
+        if [ ${#deployments[@]} -eq 0 ]; then
+          # Ejecuta los comandos una sola vez si no hay aplicaciones especificadas
+          docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}}
+          docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
+          docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
+          echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}"
+        else
+          # Ejecuta los comandos para cada aplicación si hay aplicaciones especificadas
+          for deployment in "${deployments[@]}"; do
+            docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ inputs.appVersion}}
+            docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}
+            docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}
+            echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}"
+          done
+        fi
+      shell: bash
     - run: echo "✅ Success"
       shell: bash

@@ -97,7 +97,7 @@ runs:
         shell: bash
         run: |
           echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}"
+          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
 
       - name: Generate helm version
         uses: actions/github-script@v7

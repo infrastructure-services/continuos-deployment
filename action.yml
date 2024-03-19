@@ -95,7 +95,6 @@ runs:
         jira_api_token: ${{ inputs.jira_api_token }}
         jira_email: ${{ inputs.jira_email }}
         jira_host_url: ${{ inputs.jira_host_url }}
-        # ${{inputs.appName} v${version}
         jira_release_name: ${{ inputs.appName }}
         
 

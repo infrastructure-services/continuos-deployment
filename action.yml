@@ -96,7 +96,7 @@ runs:
         jira_email: ${{ inputs.jira_email }}
         jira_host_url: ${{ inputs.jira_host_url }}
         # ${{inputs.appName} v${version}
-        jira_release_template: ${{ inputs.jira_release_template }}
+        jira_release_template: ${{ format('{0} v${{version}}', inputs.appName) }}
         
 
     - name: "Pull-Tag-Push imagen"

@@ -48,10 +48,10 @@ inputs:
     required: false
     default: "https://andreani.atlassian.net"
   # generado con la información de los inputs
-  jira_release_template:
-    description: "Title of the release name template. This will be used in name of publication in JIRA"
+  jira_release_name:
+    description: "Title of the release name template. This will be used in name of publication in JIRA and will be followed by version. e.g. 'Test v1.0.0'"
     required: false
-    default: "Test ${version}"
+    default: ""
 
 runs:
   using: "composite"
@@ -96,7 +96,7 @@ runs:
         jira_email: ${{ inputs.jira_email }}
         jira_host_url: ${{ inputs.jira_host_url }}
         # ${{inputs.appName} v${version}
-        jira_release_template: ${{ format('{0} v${{version}}', inputs.appName) }}
+        jira_release_name: ${{ inputs.appName }}
         
 
     - name: "Pull-Tag-Push imagen"

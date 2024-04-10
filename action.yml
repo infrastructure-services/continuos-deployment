@@ -29,7 +29,7 @@ inputs:
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-  teamteamProject:
+  teamProject:
     description: "Nombre del proyecto/equipo"
     required: true
   appVersion:

@@ -73,7 +73,7 @@ runs:
       - name: Set foobar to cool
         uses: mikefarah/yq@master
         with:
-          cmd: yq eval -o=json  '${{ inputs.fileValuesPath }}' > .devops/values-${{ inputs.ENVIRONMENT_NAME }}.json
+          cmd: yq eval -o=json  '${{ inputs.fileValuesPath }}' > .devops/values-${{ inputs.environment }}.json
       
       - name: Convertir JSON a variables de entorno
         uses: actions/github-script@v6
@@ -81,7 +81,7 @@ runs:
         with:
           script: |
             const fs = require('fs');
-            const path = '.devops/value-${{ inputs.ENVIRONMENT_NAME }}.json';
+            const path = '.devops/value-${{ inputs.environment }}.json';
             const fileContents = fs.readFileSync(path, 'utf8');
             const data = JSON.parse(fileContents);
             const envVars = data.env;

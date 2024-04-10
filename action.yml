@@ -1,6 +1,16 @@
-name: 'Build and Deploy'
-description: 'Unique step to Build and Deploy'
+name: 'Deploy AZ Container Apps'
+description: 'Deploy app in Az container apps'
 inputs:
+  AZCREDENTIAL:
+    description: "credenctial for azure"
+    required: true 
+  AZRG:
+    description: "Azure Resource Group"
+    required: true
+  AZ_LOCATION:
+    description: "Azure Location"
+    required: true
+
   # ACR
   ACR_USERNAME:
     description: "user de acr"
@@ -19,7 +29,7 @@ inputs:
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-  teamProject:
+  teamteamProject:
     description: "Nombre del proyecto/equipo"
     required: true
   appVersion:
@@ -35,52 +45,19 @@ inputs:
     default: ""
 
   # Values
-  helmRepo:
-    description: "Repositorio de helm"
-    required: false
-    default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
-    required: false
-    default: "onprem"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
-    required: false
-    default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
-    required: false
-    default: ""
 
   # HELM
-  helmChartVersionLatest:
-    description: "VersionHelm"
-    required: true
   clusterFqdn:
      description: "FQDN para pasarle a helm"
-     required: true
+     required: false
+     default: ""
     
-  # ArgoCD
-  ARGO_USERNAME:
-    description: "usuario de ARgocd"
-    required: true
-  ARGO_PASSWORD:
-    description: "pass de ARgocd"
-    required: true
-  ARGO_URL:
-    description: "url de ARgocd"
-    required: true
-
 outputs:
   name_environment: 
     description: "Nombre del environment"
@@ -92,68 +69,51 @@ outputs:
 runs:
   using: "composite"
   steps:
+      - uses: actions/checkout@v4
+      - name: Set foobar to cool
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq eval -o=json  '${{ inputs.fileValuesPath }}' > .devops/values-${{ inputs.ENVIRONMENT_NAME }}.json
+      
+      - name: Convertir JSON a variables de entorno
+        uses: actions/github-script@v6
+        id: BuildVariables
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '.devops/value-${{ inputs.ENVIRONMENT_NAME }}.json';
+            const fileContents = fs.readFileSync(path, 'utf8');
+            const data = JSON.parse(fileContents);
+            const envVars = data.env;
+            let envList = '';
+            for (const [key, value] of Object.entries(envVars)) {
+              envList += `${key}=${value} `;
+            }
+            console.log(envList);
+            core.setOutput("env_list", envList.trim());
+            core.setOutput("port", data.targetPort);
+      
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ inputs.AZCREDENTIAL }}
+
+      - name: Deploy Container App
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ inputs.AZRG }}
+          acrName: ${{ inputs.ACR_NAME }}
+          acrUsername: ${{ inputs.ACR_USERNAME }}
+          imageToDeploy: ${{ inputs.ACR_FULL_NAME}}/${{ inputs.teamProject }}-${{ inputs.appName }}:${{ inputs.appVersion }}
+          containerappName: ${{ inputs.teamProject }}-${{ inputs.appName }}
+          containerAppEnvironment: ${{ inputs.environment }}
+          targetPort: ${{ steps.BuildVariables.outputs.port }}
+          location: ${{ inputs.AZ_LOCATION }}
+          environmentVariables: ${{ steps.BuildVariables.outputs.env_list }}
       - name: Set Outputs
         id: setOutputs
         shell: bash
         run: |
           echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
-
-      - name: Generate helm version
-        uses: actions/github-script@v7
-        id: helmversion
-        with:
-          script: |
-            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
-            if (!helmChartVersionLatest.includes('-')) {
-                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
-            }
-            return helmChartVersionLatest
-          result-encoding: string
-          
-      - name: Generate values.yaml
-        id: value
-        uses: infrastructure-services/actions@build-values
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
-          fileValuesPath: ${{ inputs.fileValuesPath }}
-          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
-          helmRepoRef: ${{ inputs.helmRepoRef }}
-          helmRepo: ${{ inputs.helmRepo }}
-      
-      - name: build paquete helm.
-        id: helm
-        uses: infrastructure-services/actions@build-helm
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/actions@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
+          URL=$(az containerapp show --name ${{ inputs.teamProject }}-${{ inputs.appName }} --resource-group ${{ inputs.AZRG }} --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=$URL" >> $GITHUB_OUTPUT

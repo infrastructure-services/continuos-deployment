@@ -73,7 +73,7 @@ runs:
       - name: Set foobar to cool
         uses: mikefarah/yq@master
         with:
-          cmd: yq eval -o=json  '${{ inputs.fileValuesPath }}' > .devops/values-${{ inputs.environment }}.json
+          cmd: yq eval -o=json  '${{ inputs.fileValuesPath }}' > .devops/value-${{ inputs.environment }}.json
       - run: |
           cd .devops
           ls

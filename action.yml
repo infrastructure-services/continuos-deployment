@@ -43,6 +43,10 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
+  containerAppName:
+    description: "nombre de container
+    required: false
+    default: ""
 
   # Values
   fileValuesPath:
@@ -70,6 +74,17 @@ runs:
   using: "composite"
   steps:
       - uses: actions/checkout@v4
+      - name: set container app name
+        id: setAppName
+        run: |
+          if [ -z "${{ inputs.containerAppName }}" ]; then
+            echo "Using default constructed name"
+            CONTAINER_APP_NAME="${{ inputs.teamProject }}-${{ inputs.appName }}"
+          else
+            echo "Using provided container app name"
+            CONTAINER_APP_NAME="${{ inputs.containerAppName }}"
+          fi
+          echo "containerAppName=$CONTAINER_APP_NAME" >> $GITHUB_OUTPUT
       - name: Set foobar to cool
         uses: mikefarah/yq@master
         with:
@@ -108,7 +123,7 @@ runs:
           acrName: ${{ inputs.ACR_NAME }}
           acrUsername: ${{ inputs.ACR_USERNAME }}
           imageToDeploy: ${{ inputs.ACR_FULL_NAME}}/${{ inputs.teamProject }}-${{ inputs.appName }}:${{ inputs.appVersion }}
-          containerappName: ${{ inputs.teamProject }}-${{ inputs.appName }}
+          containerappName: ${{ steps.setAppName.outputs.containerAppName }} 
           containerAppEnvironment: ${{ inputs.environment }}
           targetPort: ${{ steps.BuildVariables.outputs.port }}
           location: ${{ inputs.AZ_LOCATION }}

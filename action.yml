@@ -44,7 +44,7 @@ inputs:
     required: false
     default: ""
   containerAppName:
-    description: "nombre de container
+    description: "nombre de container"
     required: false
     default: ""
 

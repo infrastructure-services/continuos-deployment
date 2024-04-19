@@ -14,16 +14,20 @@ inputs:
   # ACR
   ACR_USERNAME:
     description: "user de acr"
-    required: true
+    required: false
+    default: "azdevops"
   ACR_PASSWORD:
     description: "passwrd de acr"
-    required: true
+    required: false
+    default: "iuua7hxBI7NM/WCpHmAugFpj2JHHFb5o"
   ACR_NAME:
     description: "nommbre del acr"
-    required: true
+    required: false
+    default: "glaregistry"
   ACR_FULL_NAME:
     description: "nombre del acr con azurecr.io"
-    required: true
+    required: false
+    default: "glaregistry.azurecr.io"
 
   # App
   appName:
@@ -76,6 +80,7 @@ runs:
       - uses: actions/checkout@v4
       - name: set container app name
         id: setAppName
+        shell: bash
         run: |
           if [ -z "${{ inputs.containerAppName }}" ]; then
             echo "Using default constructed name"

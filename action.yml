@@ -127,6 +127,7 @@ runs:
           resourceGroup: ${{ inputs.AZRG }}
           acrName: ${{ inputs.ACR_NAME }}
           acrUsername: ${{ inputs.ACR_USERNAME }}
+          acrPassword: ${{ inputs.ACR_PASSWORD }}
           imageToDeploy: ${{ inputs.ACR_FULL_NAME}}/${{ inputs.teamProject }}-${{ inputs.appName }}:${{ inputs.appVersion }}
           containerappName: ${{ steps.setAppName.outputs.containerAppName }} 
           containerAppEnvironment: ${{ inputs.environment }}

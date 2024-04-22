@@ -84,7 +84,7 @@ runs:
         run: |
           if [ -z "${{ inputs.containerAppName }}" ]; then
             echo "Using default constructed name"
-            CONTAINER_APP_NAME="${{ inputs.teamProject }}-${{ inputs.appName }}"
+            CONTAINER_APP_NAME="${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.environment }}"
           else
             echo "Using provided container app name"
             CONTAINER_APP_NAME="${{ inputs.containerAppName }}"

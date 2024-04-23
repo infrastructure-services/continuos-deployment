@@ -82,9 +82,10 @@ runs:
         id: setAppName
         shell: bash
         run: |
+          environment_lower=$(echo "${{ inputs.environment }}" | tr '[:upper:]' '[:lower:]') # Convertir a minúsculas
           if [ -z "${{ inputs.containerAppName }}" ]; then
             echo "Using default constructed name"
-            CONTAINER_APP_NAME="${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.environment }}"
+            CONTAINER_APP_NAME="${{ inputs.teamProject }}-${{ inputs.appName }}-${environment_lower}" # Usar la versión en minúsculas
           else
             echo "Using provided container app name"
             CONTAINER_APP_NAME="${{ inputs.containerAppName }}"

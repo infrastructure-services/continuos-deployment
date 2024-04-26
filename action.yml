@@ -137,10 +137,10 @@ runs:
           targetPort: ${{ steps.BuildVariables.outputs.port }}
           location: ${{ inputs.AZ_LOCATION }}
           environmentVariables: ${{ steps.BuildVariables.outputs.env_list }}
-      - name: Set Outputs
-        id: setOutputs
-        shell: bash
-        run: |
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          URL=$(az containerapp show --name ${{ inputs.teamProject }}-${{ inputs.appName }} --resource-group ${{ inputs.AZRG }} --query properties.configuration.ingress.fqdn -o tsv)
-          echo "url=$URL" >> $GITHUB_OUTPUT
+      #- name: Set Outputs
+      #  id: setOutputs
+      #  shell: bash
+      #  run: |
+      #    echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+      #    URL=$(az containerapp show --name ${{ inputs.teamProject }}-${{ inputs.appName }} --resource-group ${{ inputs.AZRG }} --query properties.configuration.ingress.fqdn -o tsv)
+      #    echo "url=$URL" >> $GITHUB_OUTPUT

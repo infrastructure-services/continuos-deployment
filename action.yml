@@ -113,7 +113,7 @@ runs:
             const envVars = data.env;
             let envList = '';
             for (const [key, value] of Object.entries(envVars)) {
-              envList += `${key}=${value} `;
+              envList += `'${key}=${value}' `;
             }
             console.log(envList);
             core.setOutput("env_list", envList.trim());

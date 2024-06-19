@@ -90,6 +90,8 @@ runs:
             echo "Using provided container app name"
             CONTAINER_APP_NAME="${{ inputs.containerAppName }}"
           fi
+          # Limitar el nombre a 32 caracteres
+          CONTAINER_APP_NAME=$(echo $CONTAINER_APP_NAME | cut -c1-32)
           echo "containerAppName=$CONTAINER_APP_NAME" >> $GITHUB_OUTPUT
       - name: Set foobar to cool
         uses: mikefarah/yq@master

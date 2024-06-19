@@ -43,6 +43,12 @@ inputs:
     description: "Ref del repositorio de Helm"
     required: false
     default: "onprem"
+  cpuLimit:
+    description: "Limite de CPU del pod"
+    required: true
+  memLimit:
+    description: "Limite de Memoria del Pod"
+    required: true
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
@@ -118,7 +124,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/actions@build-values
+        uses: infrastructure-services/actions@build-values-l
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -131,6 +137,8 @@ runs:
           APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
           helmRepoRef: ${{ inputs.helmRepoRef }}
           helmRepo: ${{ inputs.helmRepo }}
+          cpuLimit: ${{ inputs.cpuLimit }}
+          memLimit: ${{ inputs.memLimit }}
       
       - name: build paquete helm.
         id: helm

@@ -1,5 +1,5 @@
-name: "Build Android"
-description: "Unique step to Build Android"
+name: "Publish to store Android"
+description: "Unique step to Publish to store Android"
 inputs:
   # App
   appName:
@@ -12,45 +12,16 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
-  # Build React
-  matrix_version:
-    description: "matrix de pruebas node"
-    required: true
-  fontawesome_token:
-    description: "token de fontawesome"
-    required: false
-    default: ""
-  packages_token:
-    description: "token github para autenticarse en packages"
-    required: false
-    default: ""
-  # Build Android
-  command:
-    description: "comando a ejecutar la build"
-    required: false
-    default: "./gradlew app:assembleRelease bundleRelease --no-daemon"
-  ANDROID_KEYSTORE_PASSWORD:
-    description: "password del keystore"
-    required: true
-  ANDROID_KEY_ALIAS:
-    description: "alias del keystore"
-    required: true
-  ANDROID_KEYSTORE:
-    description: "keystore"
-    required: true
 
 outputs:
-  name_environment:
-    description: "Nombre del environment"
-    value: ${{ steps.setOutputs.outputs.environment }}
-  url_environment:
-    description: "URL del environment"
-    value: ${{ steps.setOutputs.outputs.url }}
+  aplicacion_id:
+    description: "aplicacion id"
+    value: ${{ steps.setOutputs.outputs.aplicacion_id }}
 
 runs:
   using: "composite"
   steps:
-    - run: echo Deploy ${{ inputs.environment }}
+    - run: echo publish to ${{ inputs.environment }}
       shell: bash
 
     - name: Checkout
@@ -58,63 +29,14 @@ runs:
       with:
         fetch-depth: 0
 
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.appName }}-${{ inputs.environment }}
+        path: android/app/build/outputs/
+
     - name: Set Outputs
       id: setOutputs
       shell: bash
       run: |
-        echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-
-    - uses: architecture-it/actions@react-base-library
-      with:
-        matrix_version: ${{ inputs.matrix_version }}
-        skip_test: "true"
-        # secrets enabled in all organizations
-        packages_token: ${{ inputs.packages_token }}
-        fontawesome_token: ${{ inputs.fontawesome_token }}
-
-    - name: Cache Gradle Wrapper
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
-
-    - name: Cache Gradle Dependencies
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-caches-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-caches-
-
-    - name: Bump version
-      uses: chkfung/android-version-actions@v1.2.2
-      with:
-        gradlePath: android/app/build.gradle # or app/build.gradle.kts
-        versionName: ${{ inputs.appVersion }}
-
-    - name: Make Gradlew Executable
-      run: cd android && chmod +x ./gradlew
-      shell: bash
-
-    - name: Build Android Release
-      env:
-          ENVFILE: .env.${{ inputs.environment }}
-      shell: bash
-      run: |
-        cd android && ${{ inputs.command }}
-
-    - name: Sign app APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app
-      with:
-        releaseDirectory: android/app/build/outputs/apk/release
-        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
-        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
-        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
-
-    # Upload to Artifact
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.appName }}-${{ inputs.environment }}
-        path: ${{steps.sign_app.outputs.signedReleaseFile}}
+        echo "aplicacion_id=1" >> $GITHUB_OUTPUT

@@ -1,52 +1,21 @@
-name: 'Build and Deploy'
-description: 'Unique step to Build and Deploy'
+name: 'Release base'
+description: 'realiza el release con el tag de la versión'
 inputs:
-  # ACR
-  ACR_USERNAME:
-    description: "user de acr"
-    required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
-    required: true
-  ACR_NAME:
-    description: "nommbre del acr"
-    required: true
-  ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
-    required: true
-
-  # App
-  appName:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
-    required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
-    required: true
-  appVersion:
-    description: "tag para subir imagen"
-    required: true
-  matrix_deploy:
-    description: "deploy en multiples ambientes"
-    required: false
-    default: "[]"
-  # Values
   github_token:
     description: "Token para descargar el codigo de templates HELM"
     required: true
+
+outputs:
+  new-version:
+    description: "Version de la imagen"
+    value: ${{ steps.version.outputs.new-version }}
 runs:
   using: "composite"
   steps:
     - name: Checkout
-      uses: actions/checkout@v3.5.0
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
-    - name: Login to Azure Container Registry
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ inputs.ACR_NAME }}.azurecr.io 
-        username: ${{ inputs.ACR_USERNAME }}
-        password: ${{ inputs.ACR_PASSWORD }}
 
     - name: Get the branch name
       id: branch
@@ -71,33 +40,3 @@ runs:
         github_token: ${{ inputs.github_token }}
         only_version: 'false'
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
-
-    - name: "Pull-Tag-Push imagen"
-      if: steps.version.outputs.new-version != ''
-      id: pullImage
-      run: |
-        echo "Pull imagen"
-        echo "::notice::Version Latest: ${{ steps.version.outputs.new-version }}"
-
-        IFS=',' read -r -a deployments <<< "${{ inputs.matrix_deploy }}"
-        # Limpia y prepara el array de aplicaciones
-        deployments=($(for deployment in "${deployments[@]}"; do echo "$deployment" | xargs | sed 's/[][]//g'; done))
-        
-        if [ ${#deployments[@]} -eq 0 ]; then
-          # Ejecuta los comandos una sola vez si no hay aplicaciones especificadas
-          docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}}
-          docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
-          docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
-          echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}"
-        else
-          # Ejecuta los comandos para cada aplicación si hay aplicaciones especificadas
-          for deployment in "${deployments[@]}"; do
-            docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ inputs.appVersion}}
-            docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}
-            docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}
-            echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}"
-          done
-        fi
-      shell: bash
-    - run: echo "✅ Success"
-      shell: bash

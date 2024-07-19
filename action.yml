@@ -1,88 +1,46 @@
-name: 'Build and Deploy'
-description: 'Unique step to Build and Deploy'
+name: "Build Android"
+description: "Unique step to Build Android"
 inputs:
-  # ACR
-  ACR_USERNAME:
-    description: "user de acr"
-    required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
-    required: true
-  ACR_NAME:
-    description: "nommbre del acr"
-    required: true
-  ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
-    required: true
-
   # App
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
-    required: true
   appVersion:
     description: "tag para subir imagen"
     required: true
-  namespace:
-    description: "nombre de namespaces"
-    required: false
-    default: ""
   environment:
     description: "nombre de environment"
     required: false
     default: ""
-
-  # Values
-  helmRepo:
-    description: "Repositorio de helm"
-    required: false
-    default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
-    required: false
-    default: "onprem"
-  fileValuesPath:
-    description: "path archivo de values.yaml"
+  # Build React
+  matrix_version:
+    description: "matrix de pruebas node"
     required: true
-  GITHUB_HELMREPO_TOKEN:
-    description: "Token para descargar el codigo de templates HELM"
-    required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
+  fontawesome_token:
+    description: "token de fontawesome"
     required: false
     default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
+  packages_token:
+    description: "token github para autenticarse en packages"
     required: false
     default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
+  # Build Android
+  command:
+    description: "comando a ejecutar la build"
     required: false
-    default: ""
-
-  # HELM
-  helmChartVersionLatest:
-    description: "VersionHelm"
+    default: "./gradlew app:assembleRelease bundleRelease --no-daemon"
+  ANDROID_KEYSTORE_PASSWORD:
+    description: "password del keystore"
     required: true
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
-    
-  # ArgoCD
-  ARGO_USERNAME:
-    description: "usuario de ARgocd"
+  ANDROID_KEY_ALIAS:
+    description: "alias del keystore"
     required: true
-  ARGO_PASSWORD:
-    description: "pass de ARgocd"
-    required: true
-  ARGO_URL:
-    description: "url de ARgocd"
+  ANDROID_KEYSTORE:
+    description: "keystore"
     required: true
 
 outputs:
-  name_environment: 
+  name_environment:
     description: "Nombre del environment"
     value: ${{ steps.setOutputs.outputs.environment }}
   url_environment:
@@ -92,68 +50,71 @@ outputs:
 runs:
   using: "composite"
   steps:
-      - name: Set Outputs
-        id: setOutputs
-        shell: bash
-        run: |
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
+    - run: echo Deploy ${{ inputs.environment }}
+      shell: bash
 
-      - name: Generate helm version
-        uses: actions/github-script@v7
-        id: helmversion
-        with:
-          script: |
-            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
-            if (!helmChartVersionLatest.includes('-')) {
-                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
-            }
-            return helmChartVersionLatest
-          result-encoding: string
-          
-      - name: Generate values.yaml
-        id: value
-        uses: infrastructure-services/actions@build-values
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
-          fileValuesPath: ${{ inputs.fileValuesPath }}
-          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
-          helmRepoRef: ${{ inputs.helmRepoRef }}
-          helmRepo: ${{ inputs.helmRepo }}
-      
-      - name: build paquete helm.
-        id: helm
-        uses: infrastructure-services/actions@build-helm
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/actions@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set Outputs
+      id: setOutputs
+      shell: bash
+      run: |
+        echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+
+    - uses: architecture-it/actions@react-base-library
+      with:
+        matrix_version: ${{ inputs.matrix_version }}
+        skip_test: "true"
+        # secrets enabled in all organizations
+        packages_token: ${{ inputs.packages_token }}
+        fontawesome_token: ${{ inputs.fontawesome_token }}
+
+    - name: Cache Gradle Wrapper
+      uses: actions/cache@v2
+      with:
+        path: ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+
+    - name: Cache Gradle Dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-caches-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-caches-
+
+    - name: Bump version
+      uses: chkfung/android-version-actions@v1.2.2
+      with:
+        gradlePath: android/app/build.gradle # or app/build.gradle.kts
+        versionName: ${{ inputs.appVersion }}
+
+    - name: Make Gradlew Executable
+      run: cd android && chmod +x ./gradlew
+      shell: bash
+
+    - name: Build Android Release
+      env:
+          ENVFILE: .env.${{ inputs.environment }}
+      shell: bash
+      run: |
+        cd android && ${{ inputs.command }}
+
+    - name: Sign app APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
+      with:
+        releaseDirectory: android/app/build/outputs/apk/release
+        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
+        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
+        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
+
+    # Upload to Artifact
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.appName }}-${{ inputs.environment }}
+        path: ${{steps.sign_app.outputs.signedReleaseFile}}

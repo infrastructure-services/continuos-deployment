@@ -68,7 +68,6 @@ runs:
     - uses: architecture-it/actions@react-base-library
       with:
         matrix_version: ${{ inputs.matrix_version }}
-        skip_test: "true"
         # secrets enabled in all organizations
         packages_token: ${{ inputs.packages_token }}
         fontawesome_token: ${{ inputs.fontawesome_token }}

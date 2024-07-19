@@ -107,7 +107,7 @@ runs:
       uses: r0adkll/sign-android-release@v1
       id: sign_app
       with:
-        releaseDirectory: android/app/build/outputs/apk/release
+        releaseDirectory: android/app/build/outputs/apk
         signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
         alias: ${{ inputs.ANDROID_KEY_ALIAS }}
         keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}

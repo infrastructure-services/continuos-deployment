@@ -12,7 +12,10 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
-
+  artifact_name:
+    description: "nombre del artifact"
+    required: false
+    default: ""
 outputs:
   aplicacion_id:
     description: "aplicacion id"
@@ -23,7 +26,19 @@ runs:
   steps:
     - run: echo publish to ${{ inputs.environment }}
       shell: bash
-
+      # si el artifact_name is empty, set it to the appName
+    - name: Set artifact name
+      id: setArtifactName
+      run: |
+        if [ -z "${{ inputs.artifact_name }}" ]; then
+          echo "artifact_name is empty, setting it to appName and environment"
+          echo "name=${{ inputs.appName }}-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+        else
+          echo "artifact_name is provided: ${{ inputs.artifact_name }}"
+          echo "name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+      
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -32,7 +47,7 @@ runs:
     - name: Download artifact
       uses: actions/download-artifact@v4
       with:
-        name: ${{ inputs.appName }}-${{ inputs.environment }}
+        name: ${{ steps.setArtifactName.outputs.name }}
         path: android/app/build/outputs/
 
     - name: Set Outputs

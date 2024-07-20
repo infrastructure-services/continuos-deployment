@@ -28,7 +28,7 @@ inputs:
   command:
     description: "comando a ejecutar la build"
     required: false
-    default: "./gradlew app:assembleRelease bundleRelease --no-daemon"
+    default: "./gradlew assembleRelease bundleRelease --no-daemon"
   ANDROID_KEYSTORE_PASSWORD:
     description: "password del keystore"
     required: true
@@ -102,12 +102,15 @@ runs:
       shell: bash
       run: |
         cd android && ${{ inputs.command }}
+      
+    - run: cd android && ls -la app/build/outputs/apk/release
+      shell: bash
 
     - name: Sign app APK
       uses: r0adkll/sign-android-release@v1
       id: sign_app
       with:
-        releaseDirectory: android/app/build/outputs/apk
+        releaseDirectory: android/app/build/outputs/apk/release
         signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
         alias: ${{ inputs.ANDROID_KEY_ALIAS }}
         keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}

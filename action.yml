@@ -116,6 +116,13 @@ runs:
     - run: cd android && ls -la app/build/outputs/apk/release
       shell: bash
 
+    - name: Setup build tool version variable
+      shell: bash
+      run: |
+        BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
+        echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
+        echo Last build tool version is: $BUILD_TOOL_VERSION
+
     - name: Sign app APK
       uses: r0adkll/sign-android-release@v1
       id: sign_app
@@ -124,6 +131,8 @@ runs:
         signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
         alias: ${{ inputs.ANDROID_KEY_ALIAS }}
         keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
+      env:
+        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
 
     # Upload to Artifact
     - name: Upload Artifact

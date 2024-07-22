@@ -25,6 +25,10 @@ inputs:
     required: false
     default: ""
   # Build Android
+  java_version: 
+    description: "version de java para build"
+    required: false
+    default: "17"s
   command:
     description: "comando a ejecutar la build"
     required: false
@@ -64,6 +68,16 @@ runs:
       run: |
         echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
         echo "artifact_name=${{ inputs.appName }}-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'microsoft' # See 'Supported distributions' for available options
+        java-version: ${{ inputs.java_version }}
+        cache: 'gradle'
+        cache-dependency-path: | # optional
+          sub-project/*.gradle*
+          sub-project/**/gradle-wrapper.propertiess
 
     - uses: architecture-it/actions@react-base-library
       with:

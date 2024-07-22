@@ -74,10 +74,6 @@ runs:
       with:
         distribution: 'microsoft' # See 'Supported distributions' for available options
         java-version: ${{ inputs.java_version }}
-        cache: 'gradle'
-        cache-dependency-path: | # optional
-          sub-project/*.gradle*
-          sub-project/**/gradle-wrapper.propertiess
 
     - uses: architecture-it/actions@react-base-library
       with:

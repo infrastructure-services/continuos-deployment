@@ -16,6 +16,10 @@ inputs:
     description: "nombre del artifact"
     required: false
     default: ""
+  isProd:
+    description: "flag para saber si es un despliegue productivo"
+    required: false
+    default: "false"
 outputs:
   aplicacion_id:
     description: "aplicacion id"

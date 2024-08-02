@@ -140,3 +140,21 @@ runs:
       with:
         name: ${{ steps.setOutputs.outputs.artifact_name }}
         path: ${{steps.sign_app.outputs.signedReleaseFile}}
+        
+    - name: Sign app APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app_aab
+      with:
+        releaseDirectory: android/app/build/outputs/bundle/release
+        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
+        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
+        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
+      env:
+        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
+
+    # Upload to Artifact
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.setOutputs.outputs.artifact_name }}.aab
+        path: ${{steps.sign_app_aab.outputs.signedReleaseFile}}

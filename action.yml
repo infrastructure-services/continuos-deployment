@@ -97,10 +97,11 @@ runs:
           ${{ runner.os }}-gradle-caches-
 
     - name: Bump version
-      uses: chkfung/android-version-actions@v1.2.2
+      uses: chkfung/android-version-actions@v1.2.3
       with:
         gradlePath: android/app/build.gradle # or app/build.gradle.kts
-        versionName: ${{ inputs.appVersion }}
+        versionName: ${{ inputs.appVersion }} 
+        versionCode: ${{ github.run_number }}
 
     - name: Make Gradlew Executable
       run: cd android && chmod +x ./gradlew

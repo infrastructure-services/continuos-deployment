@@ -20,17 +20,25 @@ inputs:
     description: "flag para saber si es un despliegue productivo"
     required: false
     default: "false"
+  filename:
+    description: "nombre del archivo"
+    required: false
+    default: "app-release-signed.apk"
+  gitOpsUrl:
+    description: "Url de github-integration"
+    required: false
+    default: "https://github-integration-gitops-prod.apps.andreani.com.ar"
 outputs:
   aplicacion_id:
     description: "aplicacion id"
-    value: ${{ steps.setOutputs.outputs.aplicacion_id }}
+    value: ${{ steps.publish.outputs.aplicacion_id }}
 
 runs:
   using: "composite"
   steps:
     - run: echo publish to ${{ inputs.environment }}
       shell: bash
-      # si el artifact_name is empty, set it to the appName
+
     - name: Set artifact name
       id: setArtifactName
       run: |
@@ -52,10 +60,47 @@ runs:
       uses: actions/download-artifact@v4
       with:
         name: ${{ steps.setArtifactName.outputs.name }}
-        path: android/app/build/outputs/
+        path: app
 
-    - name: Set Outputs
-      id: setOutputs
-      shell: bash
+    - name: Publish to store
+      id: publish
       run: |
-        echo "aplicacion_id=1" >> $GITHUB_OUTPUT
+        echo "Publishing to store"
+        echo "appName: ${{ inputs.appName }}"
+        echo "appVersion: ${{ inputs.appVersion }}"
+        echo "environment: ${{ inputs.environment }}"
+        echo "artifact_name: ${{ inputs.artifact_name }}"
+        echo "isProd: ${{ inputs.isProd }}"
+        echo "gitOpsUrl: ${{ inputs.gitOpsUrl }}"
+
+        # Set Organization and RepositoryName from GitHub context
+        ORGANIZATION="${{ github.repository_owner }}"
+        REPOSITORY="${{ github.repository }}"
+
+        response=$(curl -X POST "${{ inputs.gitOpsUrl }}/api/v1/app-distribution" \
+              -H "accept: application/json" \
+              -H "Content-Type: multipart/form-data" \
+              -F "Organization=$ORGANIZATION" \
+              -F "RepositoryName=$REPOSITORY" \
+              -F "AppName=${{ inputs.appName }}" \
+              -F "Version=${{ inputs.appVersion }}" \
+              -F "EnvironmentName=${{ inputs.environment }}" \
+              -F "IsEnvironmentProduction=${{ inputs.isProd }}" \
+              -F "DeploymentName=${{ inputs.environment }}" \
+              -F "File=@app/${{ inputs.filename }}" \
+              --connect-timeout 30 \
+              --max-time 60 \
+              -w "%{http_code}" \
+              -o response_body.txt)
+
+        echo "API Response: $(<response_body.txt)"
+        
+        # Extraer el status_code de la respuesta usando grep y sed
+        #status_code=$(grep -o '"statusCode":[^,]*' response_body.txt | sed 's/[^0-9]*//g')
+        
+        #if [ "$status_code" -eq 200 ]; then
+        #  echo "statusCode: 200" >> $GITHUB_OUTPUT
+        #else
+        #  echo "Error: $response"
+        #fi
+      shell: bash

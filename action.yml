@@ -1,5 +1,5 @@
-name: 'Build and Deploy'
-description: 'Unique step to Build and Deploy'
+name: 'Helm and Deploy'
+description: 'Action to build helm manifests and Deploy with argocd'
 inputs:
   # ACR
   ACR_USERNAME:
@@ -45,10 +45,20 @@ inputs:
     default: "onprem"
   cpuLimit:
     description: "Limite de CPU del pod"
-    required: true
+    required: false
+    default: "100m"
   memLimit:
     description: "Limite de Memoria del Pod"
-    required: true
+    required: false
+    default: "150Mi"
+  cpuRequest:
+    description: "Request de CPU del pod"
+    required: false
+    default: "50m"
+  memRequest:
+    description: "Request de Memoria del Pod"
+    required: false
+    default: "50Mi"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
@@ -124,7 +134,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/actions@build-values-l
+        uses: infrastructure-services/continuos-deployment@generate-values
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -139,10 +149,12 @@ runs:
           helmRepo: ${{ inputs.helmRepo }}
           cpuLimit: ${{ inputs.cpuLimit }}
           memLimit: ${{ inputs.memLimit }}
+          cpuRequest: ${{ inputs.cpuRequest }}
+          memRequest: ${{ inputs.memRequest }}
       
       - name: build paquete helm.
         id: helm
-        uses: infrastructure-services/actions@build-helm
+        uses: infrastructure-services/continuos-deployment@pack-helm
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -155,7 +167,7 @@ runs:
           
       - name: Argo deploy 🚀
         id: argo
-        uses: infrastructure-services/actions@sync-argo
+        uses: infrastructure-services/continuos-deployment@sync-argo
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

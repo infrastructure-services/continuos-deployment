@@ -38,11 +38,21 @@ inputs:
     description: "Nombre del proyecto/equipo"
     required: true
   cpuLimit:
-    description: "Limite de cpu del Pod"
-    required: true
+    description: "Limite de CPU del pod"
+    required: false
+    default: "1"
   memLimit:
-    description: "Limite de memoria del Pod"
-    required: true
+    description: "Limite de Memoria del Pod"
+    required: false
+    default: "1Gi"
+  cpuRequest:
+    description: "Request de CPU del pod"
+    required: false
+    default: "150m"
+  memRequest:
+    description: "Request de Memoria del Pod"
+    required: false
+    default: "200Mi"
 runs:
   using: "composite"
   steps:
@@ -55,7 +65,7 @@ runs:
         version: v3.12.3 #Helm 13 tiene un bug
         
     - name: checkout codigo
-      uses: actions/checkout@v4 #actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Copy values.yaml
       shell: bash
@@ -83,6 +93,8 @@ runs:
         echo 'appname: ${{inputs.appName}}' >> values.yaml
         echo 'cpulimit: ${{inputs.cpuLimit}}' >> values.yaml
         echo 'memlimit: ${{inputs.memLimit}}' >> values.yaml
+        echo 'cpurequest: ${{inputs.cpuRequest}}' >> values.yaml
+        echo 'memrequest: ${{inputs.memRequest}}' >> values.yaml
         echo 'caCertificate: |' >> values.yaml
         echo -e "${{inputs.APPS_CA_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'certificate: |' >> values.yaml

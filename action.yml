@@ -1,33 +1,27 @@
-name: 'Generic helm package'
+name: 'Generic helm pack and Push to ACR'
 inputs:
   ACR_USERNAME:
     description: "user de acr"
     required: true
-    default: ''
   ACR_PASSWORD:
     description: "passwrd de acr"
     required: true
-    default: ''
   ACR_FULL_NAME:
     description: "nombre del acr con azurecr.io"
     required: true
-    default: ''
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-    default: orleans-grain
   namespace:
-    description: "nombre de namespaces"
+    description: "nombre de namespace"
     required: false
     default: ""
   teamProject:
     description: "Nombre del proyecto/equipo"
     required: true
-    default: qa
   appVersion:
     description: "tag para subir imagen"
     required: true
-    default: latest
   helmChartVersionLatest:
      description: "VersionHelm"
      required: true

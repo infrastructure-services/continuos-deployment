@@ -42,7 +42,7 @@ inputs:
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "standard"
+    default: "standard-nocert"
   cpuLimit:
     description: "Limite de CPU del pod"
     required: false

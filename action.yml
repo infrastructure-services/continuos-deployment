@@ -110,7 +110,7 @@ runs:
             done
             if [[ ${{inputs.environment}} =~ "test" ]]; then
               echo "El proyecto $NAMESPACE es de test, le ponemos la ventana de sincronización"
-              argocd proj windows add ${{inputs.namespace}} --kind deny --schedule "30 22 * * *" --duration 11h --applications "*"
+              argocd proj windows add ${{inputs.namespace}} --kind deny --schedule "30 21 * * *" --duration 11h --applications "*"
               argocd proj windows enable-manual-sync ${{inputs.namespace}} 0
             fi
           fi

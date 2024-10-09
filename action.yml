@@ -32,7 +32,7 @@ inputs:
   environment:
     description: "nombre de environment"
     required: false
-    default: ""
+    default: "test"
 
   # Values
   helmRepo:
@@ -42,23 +42,23 @@ inputs:
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "onprem"
+    default: "standard"
   cpuLimit:
     description: "Limite de CPU del pod"
     required: false
-    default: "100m"
+    default: "1"
   memLimit:
     description: "Limite de Memoria del Pod"
     required: false
-    default: "150Mi"
+    default: "1Gi"
   cpuRequest:
     description: "Request de CPU del pod"
     required: false
-    default: "50m"
+    default: "150m"
   memRequest:
     description: "Request de Memoria del Pod"
     required: false
-    default: "50Mi"
+    default: "200Mi"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true

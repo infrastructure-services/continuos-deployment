@@ -23,7 +23,6 @@ inputs:
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-    default: orleans-grain
   namespace:
     description: "nombre de namespaces"
     required: false

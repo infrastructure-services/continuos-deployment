@@ -46,8 +46,9 @@ runs:
       - uses: actions/download-artifact@v3
         with:
           name: ${{inputs.appName}}-${{inputs.namespace}}
-    
-      - name: Helm Lint, verifica helm por errores (deberia ser bloqueante)
+
+    # Verifica helm por errores (deberia ser bloqueante). Revisar este paso con un Json para asegurar que esté correcto.
+      - name: Helm Lint 
         shell: bash
         run: |-
           helmLint="helm lint --values=values.yaml > /dev/null 2>&1"

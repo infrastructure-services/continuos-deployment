@@ -12,6 +12,10 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
+  isProd:
+    description: "si es produccion"
+    required: false
+    default: "false"
   # Build React
   matrix_version:
     description: "matrix de pruebas node"
@@ -68,6 +72,12 @@ runs:
       run: |
         echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
         echo "artifact_name=${{ inputs.appName }}-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+        # si es prod el nombre se mantiene, si no es prod se le agrega el environment
+        if [ "${{ inputs.isProd }}" == "false" ]; then
+          echo "internal_name=[${{ inputs.environment }}] ${{ inputs.appName }}" >> $GITHUB_OUTPUT
+        else
+          echo "internal_name=${{ inputs.appName }}" >> $GITHUB_OUTPUT
+        fi
 
     - name: Set up JDK
       uses: actions/setup-java@v4
@@ -110,6 +120,9 @@ runs:
     - name: Build Android Release
       env:
           ENVFILE: .env.${{ inputs.environment }}
+          APP_SUFFIX: ${{ inputs.environment }}
+          APP_NAME: ${{ steps.setOutputs.outputs.internal_name }}
+
       shell: bash
       run: |
         cd android && ${{ inputs.command }}

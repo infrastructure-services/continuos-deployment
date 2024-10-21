@@ -1,18 +1,15 @@
-name: 'Helm and Deploy'
-description: 'Action to build helm manifests and Deploy with argocd'
+name: 'Image Tag Check'
+description: 'Action to check if provided image tag exists for a certain app and project'
 inputs:
   # ACR
-  ACR_USERNAME:
+  REGISTRY_USER:
     description: "user de acr"
     required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
-    required: true
-  ACR_NAME:
-    description: "nommbre del acr"
+  REGISTRY_PASS:
+    description: "Token de acr"
     required: true
   ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
+    description: "Nombre del acr con azurecr.io"
     required: true
 
   # App
@@ -23,162 +20,27 @@ inputs:
     description: "Nombre del proyecto/equipo"
     required: true
   appVersion:
-    description: "tag para subir imagen"
+    description: "tag a buscar"
     required: true
-  namespace:
-    description: "nombre de namespaces"
-    required: false
-    default: ""
-  environment:
-    description: "nombre de environment"
-    required: false
-    default: "test"
-
-  # Values
-  helmRepo:
-    description: "Repositorio de helm"
-    required: false
-    default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
-    required: false
-    default: "standard-nocert"
-  cpuLimit:
-    description: "Limite de CPU del pod"
-    required: false
-    default: "1"
-  memLimit:
-    description: "Limite de Memoria del Pod"
-    required: false
-    default: "1Gi"
-  cpuRequest:
-    description: "Request de CPU del pod"
-    required: false
-    default: "150m"
-  memRequest:
-    description: "Request de Memoria del Pod"
-    required: false
-    default: "200Mi"
-  fileValuesPath:
-    description: "path archivo de values.yaml"
-    required: true
-  GITHUB_HELMREPO_TOKEN:
-    description: "Token para descargar el codigo de templates HELM"
-    required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
-    required: false
-    default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
-    required: false
-    default: ""
-
-  # HELM
-  helmChartVersionLatest:
-    description: "VersionHelm"
-    required: true
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
-    
-  # ArgoCD
-  ARGO_USERNAME:
-    description: "usuario de ARgocd"
-    required: true
-  ARGO_PASSWORD:
-    description: "pass de ARgocd"
-    required: true
-  ARGO_URL:
-    description: "url de ARgocd"
-    required: true
-
-outputs:
-  name_environment: 
-    description: "Nombre del environment"
-    value: ${{ steps.setOutputs.outputs.environment }}
-  url_environment:
-    description: "URL del environment"
-    value: ${{ steps.setOutputs.outputs.url }}
 
 runs:
   using: "composite"
   steps:
-      - name: Check Application
-        uses: infrastructure-services/continuos-integration@check-if-exists-app
-        with:
-          gitOpsUrl: "https://github-integration-gitops-prod.apps.andreani.com.ar"
-        
-      - name: Set Outputs
-        id: setOutputs
+      - name: Check tag existence
         shell: bash
         run: |
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
-
-      - name: Generate helm version
-        uses: actions/github-script@v7
-        id: helmversion
-        with:
-          script: |
-            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
-            if (!helmChartVersionLatest.includes('-')) {
-                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
-            }
-            return helmChartVersionLatest
-          result-encoding: string
-          
-      - name: Generate values.yaml
-        id: value
-        uses: infrastructure-services/continuos-deployment@generate-values
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
-          fileValuesPath: ${{ inputs.fileValuesPath }}
-          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
-          helmRepoRef: ${{ inputs.helmRepoRef }}
-          helmRepo: ${{ inputs.helmRepo }}
-          cpuLimit: ${{ inputs.cpuLimit }}
-          memLimit: ${{ inputs.memLimit }}
-          cpuRequest: ${{ inputs.cpuRequest }}
-          memRequest: ${{ inputs.memRequest }}
-      
-      - name: build paquete helm.
-        id: helm
-        uses: infrastructure-services/continuos-deployment@pack-helm
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/continuos-deployment@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
+            tags=$(curl -s -u "${{ inputs.REGISTRY_USER }}:${{ inputs.REGISTRY_PASS }}" "https://${{ inputs.ACR_FULL_NAME }}/v2/${{ inputs.teamProject }}-${{ inputs.appName }}/tags/list" | jq -r '.tags[]')
+            found=false
+            for tag in $tags; do
+              if [ "$tag" = "${{ inputs.appVersion }}" ]; then
+                found=true
+                break
+              fi
+            done
+            if $found; then
+              echo "Se encontró la versión ${{ inputs.appVersion }}"
+              exit 0
+            else
+              echo "No se encontró la versión ${{ inputs.appVersion }}"
+              exit 1
+            fi   

@@ -1,5 +1,5 @@
-name: 'Build and Deploy'
-description: 'Unique step to Build and Deploy'
+name: 'Generate Release'
+description: 'Action to generate release after a successful deploy to prod'
 inputs:
   # ACR
   ACR_USERNAME:
@@ -33,26 +33,6 @@ inputs:
   github_token:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  # JIRA
-  jira_project_id:
-    description: Jira Project Id (e.g. "PE20"). This will be used as prefix in tickets
-    required: false
-  jira_api_token:
-    description: Jira API Token
-    required: false
-  jira_email:
-    description: Jira Email
-    required: false
-  jira_host_url:
-    description: Jira Host URL
-    required: false
-    default: "https://andreani.atlassian.net"
-  # generado con la información de los inputs
-  jira_release_name:
-    description: "Title of the release name template. This will be used in name of publication in JIRA and will be followed by version. e.g. 'Test v1.0.0'"
-    required: false
-    default: ""
-
 runs:
   using: "composite"
   steps:
@@ -83,20 +63,17 @@ runs:
           echo "configureBranch=[\"main\", {\"name\": \"${{ steps.branch.outputs.BranchName }}\", \"prerelease\": \"${{ steps.branch.outputs.BranchName }}\" }]" >> $GITHUB_OUTPUT
         fi
       shell: bash
-        
-    - name: "Generate Release"
-      id: version
+
+    - name: 📑Jira integration
       uses: architecture-it/actions@next-version-test-jira
       with:
-        github_token: ${{ inputs.github_token }}
+        github_token: ${{ secrets.ARQUITECTURA_DEPLOY }}
         only_version: 'false'
+        jira_email: ${{ secrets.JIRA_EMAIL }}
+        jira_project_id: ${{ vars.JIRA_PROJECT_ID }}
+        jira_api_token: ${{ secrets.JIRA_API_TOKEN }}
+        jira_release_name: ${{ inputs.teamProject }}:${{ inputs.appName }}
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
-        jira_project_id: ${{ inputs.jira_project_id }}
-        jira_api_token: ${{ inputs.jira_api_token }}
-        jira_email: ${{ inputs.jira_email }}
-        jira_host_url: ${{ inputs.jira_host_url }}
-        jira_release_name: ${{ inputs.appName }}
-        
 
     - name: "Pull-Tag-Push imagen"
       if: steps.version.outputs.new-version != ''

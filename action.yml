@@ -33,6 +33,18 @@ inputs:
   github_token:
     description: "Token para descargar el codigo de templates HELM"
     required: true
+
+  #Jira Integration
+  jira_project_id:
+    description: Jira Project Id (e.g. "PE20"). This will be used as prefix in tickets
+    required: false
+  jira_api_token:
+    description: Jira API Token
+    required: false
+  jira_email:
+    description: Jira Email
+    required: false
+
 runs:
   using: "composite"
   steps:
@@ -67,11 +79,11 @@ runs:
     - name: 📑Jira integration
       uses: architecture-it/actions@next-version-test-jira
       with:
-        github_token: ${{ secrets.ARQUITECTURA_DEPLOY }}
+        github_token: ${{ inputs.github_token }}
         only_version: 'false'
-        jira_email: ${{ secrets.JIRA_EMAIL }}
-        jira_project_id: ${{ vars.JIRA_PROJECT_ID }}
-        jira_api_token: ${{ secrets.JIRA_API_TOKEN }}
+        jira_email: ${{ inputs.jira_email }}
+        jira_project_id: ${{ inputs.jira_project_id }}
+        jira_api_token: ${{ inputs.jira_api_token }}
         jira_release_name: ${{ inputs.teamProject }}:${{ inputs.appName }}
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
 

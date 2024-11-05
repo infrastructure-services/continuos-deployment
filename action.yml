@@ -163,9 +163,9 @@ runs:
           namespace: ${{ inputs.namespace }}
           appVersion: ${{ inputs.appVersion }}
           helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ECR_ID: ${{ inputs.ACR_USERNAME }}
-          ECR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ECR_FULLNAME: ${{ inputs.ACR_FULL_NAME }}
+          ECR_ID: ${{ inputs.ECR_ID }}
+          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
+          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
           
       - name: Argo deploy 🚀
         id: argo
@@ -176,10 +176,9 @@ runs:
           namespace: ${{ inputs.namespace }}
           appVersion: ${{ inputs.appVersion }}
           helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
+          ECR_ID: ${{ inputs.ECR_ID }}
+          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
+          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
           ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}

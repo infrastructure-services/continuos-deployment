@@ -1,14 +1,15 @@
-name: 'Generic helm pack and Push to ACR'
+name: 'Generic helm pack and Push to ECR'
 inputs:
-  ACR_USERNAME:
-    description: "user de acr"
+  ECR_ID:
+    description: "user de ecr"
     required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
+  ECR_PASSWORD:
+    description: "passwrd de ecr"
     required: true
-  ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
+  ECR_FULLNAME:
+    description: "nombre del ecr completo con id, ej public.ecr.aws/u1w1q0t2"
     required: true
+
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
@@ -59,16 +60,17 @@ runs:
              exit 1
           fi
 
-      - name: Login to Azure Container Registry
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ inputs.ACR_NAME }}.azurecr.io #ACR_FULL_NAME incluye el azurecr.io
-          username: ${{ inputs.ACR_USERNAME }}
-          password: ${{ inputs.ACR_PASSWORD }}
-      - name: Enpaquetar y subir helm a acr
-        shell: bash
-        run: |-
+      - name: Helm Package and Push to ECR
+        run: |
+          
+          
+          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
+          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
+          
+          ECR_ID: ${{ inputs.ECR_ID }}
+          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
+          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
           export HELM_EXPERIMENTAL_OCI=1 #Es necesario para el chart save}}
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
-          echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
+          aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}

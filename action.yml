@@ -1,5 +1,7 @@
 name: 'Generate values.yaml'
+description: 'Action to generate values.yaml file from .devops values-env.yaml file and repository variables'
 inputs:
+
   APPS_CERTIFICATE:
     description: "Certificado para el dominio de apps en ARO"
     required: true
@@ -9,24 +11,27 @@ inputs:
   APPS_KEY_CERTIFICATE:
     description: "Certificado ARO Key"
     required: true
+    
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
   helmRepo:
     description: "Repositorio de helm"
     required: false
-    default: "infrastructure-services/poc-orleans"
+    default: "infrastructure-services/manifiestos-cd"
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "main"
+    default: "standard"
+    
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
   namespace:
-    description: "nombre de namespaces"
+    description: "nombre de namespace"
     required: false
     default: ""
+    
   clusterFqdn:
      description: "FQDN para pasarle a helm"
      required: true
@@ -36,6 +41,7 @@ inputs:
   teamProject:
     description: "Nombre del proyecto/equipo"
     required: true
+    
   cpuLimit:
     description: "Limite de CPU del pod"
     required: false
@@ -52,6 +58,7 @@ inputs:
     description: "Request de Memoria del Pod"
     required: false
     default: "200Mi"
+    
 runs:
   using: "composite"
   steps:
@@ -61,7 +68,7 @@ runs:
     - name: Install Helm
       uses: azure/setup-helm@v3
       with:
-        version: v3.12.3 #Helm 13 tiene un bug
+        version: v3.12.3 #Helm 13 tiene un bug (5/11/2024 Hay que chequear si todavía está)
         
     - name: checkout codigo
       uses: actions/checkout@v4
@@ -89,6 +96,7 @@ runs:
         echo -e 'cluster:\n  fqdn: ${{ inputs.clusterFqdn}}' >> values.yaml
         ls
         echo 'namespace: ${{inputs.namespace}}' >> values.yaml
+        echo 'projectName: ${{inputs.teamProject}}' >> values.yaml
         echo 'appname: ${{inputs.appName}}' >> values.yaml
         echo 'cpulimit: ${{inputs.cpuLimit}}' >> values.yaml
         echo 'memlimit: ${{inputs.memLimit}}' >> values.yaml

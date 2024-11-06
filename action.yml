@@ -69,4 +69,4 @@ runs:
           
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
           aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
-          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
+          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}

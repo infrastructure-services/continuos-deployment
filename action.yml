@@ -61,16 +61,12 @@ runs:
           fi
 
       - name: Helm Package and Push to ECR
+        shell: bash
         run: |
-          
-          
+                    
           aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
           aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
           
-          ECR_ID: ${{ inputs.ECR_ID }}
-          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
-          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
-          export HELM_EXPERIMENTAL_OCI=1 #Es necesario para el chart save}}
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
           aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}

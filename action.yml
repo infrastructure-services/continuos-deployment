@@ -74,7 +74,8 @@ runs:
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
 
           # Creamos el repositorio si no existe (Con la nomenclatura helm-proyecto-aplicacion)
-          REPOSITORY_NAME="helm-${{ inputs.TeamProject }}-${{ inputs.appName }}"
+          # REPOSITORY_NAME="helm-${{ inputs.TeamProject }}-${{ inputs.appName }}"
+          REPOSITORY_NAME="${{ inputs.TeamProject }}-${{ inputs.appName }}"
           aws ecr-public describe-repositories --repository-names "$REPOSITORY_NAME" --region us-east-1 || \
           aws ecr-public create-repository --repository-name "$REPOSITORY_NAME" --region us-east-1
           

@@ -64,6 +64,8 @@ runs:
       - name: Helm Package and Push to ECR
         shell: bash
         run: |-
+          export HELM_EXPERIMENTAL_OCI=1 #Es necesario para el chart save}}
+          
           # Configuro acceso a aws
           aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
           aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}

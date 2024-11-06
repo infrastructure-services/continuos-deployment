@@ -86,4 +86,4 @@ runs:
           echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
 
           #Push de la imagen al repositorio creado
-          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}/$REPOSITORY_NAME
+          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}

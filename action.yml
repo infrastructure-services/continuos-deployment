@@ -71,7 +71,7 @@ runs:
           echo inputs.TeamProject: ${{inputs.TeamProject}}
           echo inputs.appName: ${{inputs.appName }}
           echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
-          echo inputs.ECR_FULL_NAME: ${{inputs.ECR_FULL_NAME }}
+          echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
           echo env.helmChartVersionLatest: ${{ env.helmChartVersionLatest}}
 
-          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
+          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}

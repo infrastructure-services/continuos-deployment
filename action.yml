@@ -66,7 +66,12 @@ runs:
         run: |-
           aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
           aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
-          
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
           aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
+          echo inputs.TeamProject: ${{inputs.TeamProject}}
+          echo inputs.appName: ${{inputs.appName }}
+          echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
+          echo inputs.ECR_FULL_NAME: ${{inputs.ECR_FULL_NAME }}
+          echo env.helmChartVersionLatest: ${{ env.helmChartVersionLatest}}
+
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}

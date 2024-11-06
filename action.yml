@@ -3,13 +3,10 @@ description: 'Action to build helm manifests and Deploy on EKS with argocd'
 inputs:
   # ACR
   ECR_ID:
-    description: "user de aecr"
+    description: "user de ecr"
     required: true
   ECR_PASSWORD:
     description: "passwrd de ecr"
-    required: true
-  ACR_NAME:
-    description: "nommbre del acr"
     required: true
   ECR_FULLNAME:
     description: "nombre del ecr completo con id, ej public.ecr.aws/u1w1q0t2"

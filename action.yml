@@ -100,7 +100,7 @@ runs:
             variableOk=1
           else
             echo "El proyecto no existe en ArgoCD, procediendo a crearlo"
-            argoCommand="argocd proj create ${{inputs.namespace}} --upsert --dest https://kubernetes.default.svc,${{inputs.namespace}} --src  ${{ inputs.ACR_FULL_NAME }}/helm --grpc-web"
+            argoCommand="argocd proj create ${{inputs.namespace}} --upsert --dest https://kubernetes.default.svc,${{inputs.namespace}} --src  ${{ inputs.ECR_FULLNAME }} --grpc-web"
             for i in {1..5}
             do
             if eval "$argoCommand"; then

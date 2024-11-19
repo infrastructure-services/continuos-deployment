@@ -2,15 +2,18 @@ name: 'Generate values.yaml'
 description: 'Action to generate values.yaml file from .devops values-env.yaml file and repository variables'
 inputs:
 
-  APPS_CERTIFICATE:
+  CERTIFICATE:
     description: "Certificado para el dominio de apps en ARO"
-    required: true
-  APPS_CA_CERTIFICATE:
+    required: false
+    default: ""
+  CA_CERTIFICATE:
     description: "Certificado de la CA"
-    required: true
-  APPS_KEY_CERTIFICATE:
+    required: false
+    default: ""
+  KEY_CERTIFICATE:
     description: "Certificado ARO Key"
-    required: true
+    required: false
+    default: ""
     
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"

@@ -106,11 +106,11 @@ runs:
         echo 'cpurequest: ${{inputs.cpuRequest}}' >> values.yaml
         echo 'memrequest: ${{inputs.memRequest}}' >> values.yaml
         echo 'caCertificate: |' >> values.yaml
-        echo -e "${{inputs.APPS_CA_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
+        echo -e "${{inputs.CA_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'certificate: |' >> values.yaml
-        echo -e "${{inputs.APPS_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
+        echo -e "${{inputs.CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'key: |' >> values.yaml
-        echo -e "${{inputs.APPS_KEY_CERTIFICATE}}" |  sed 's/^/    /' >> values.yaml
+        echo -e "${{inputs.KEY_CERTIFICATE}}" |  sed 's/^/    /' >> values.yaml
         echo 'name: ${{inputs.teamProject}}-${{inputs.appName}}' >> Chart.yaml
         
     - name: show values

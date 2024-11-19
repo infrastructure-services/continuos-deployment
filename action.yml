@@ -1,5 +1,5 @@
 name: 'Generate values.yaml'
-description: 'Action to generate values.yaml file from .devops values-env.yaml file and repository variables'
+description: 'Action to generate values.yaml file from .devops values-env.yaml file and repository variables for eks manifiests'
 inputs:
 
   CERTIFICATE:

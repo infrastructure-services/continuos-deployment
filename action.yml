@@ -3,7 +3,7 @@ description: 'Action to generate values.yaml file from .devops values-env.yaml f
 inputs:
 
   CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
+    description: "Certificado para el dominio"
     required: false
     default: ""
   CA_CERTIFICATE:
@@ -11,7 +11,7 @@ inputs:
     required: false
     default: ""
   KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
+    description: "Certificado Key"
     required: false
     default: ""
     

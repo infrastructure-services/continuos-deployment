@@ -133,7 +133,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/continuos-deployment@generate-values
+        uses: infrastructure-services/continuos-deployment@eks-generate-values
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

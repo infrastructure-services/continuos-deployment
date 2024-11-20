@@ -34,6 +34,10 @@ inputs:
     description: "nombre de namespace"
     required: false
     default: ""
+  ROLE_ARN:
+    description: "URI del ROL ARN"
+    required: false
+    default: "arn:aws:iam::654654346384:policy/HopEnviosSQSAccessPolicy"
     
   clusterFqdn:
      description: "FQDN para pasarle a helm"
@@ -105,6 +109,7 @@ runs:
         echo 'memlimit: ${{inputs.memLimit}}' >> values.yaml
         echo 'cpurequest: ${{inputs.cpuRequest}}' >> values.yaml
         echo 'memrequest: ${{inputs.memRequest}}' >> values.yaml
+        echo 'ROLE_ARN: ${{inputs.ROLE_ARN}}' >> values.yaml
         echo 'caCertificate: |' >> values.yaml
         echo -e "${{inputs.CA_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'certificate: |' >> values.yaml

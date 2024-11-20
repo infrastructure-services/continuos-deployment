@@ -64,16 +64,17 @@ inputs:
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps"
+  
+  CERTIFICATE:
+    description: "Certificado para el dominio"
     required: false
     default: ""
-  APPS_CA_CERTIFICATE:
+  CA_CERTIFICATE:
     description: "Certificado de la CA"
     required: false
     default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
+  KEY_CERTIFICATE:
+    description: "Certificado Key"
     required: false
     default: ""
 
@@ -141,9 +142,9 @@ runs:
           clusterFqdn: ${{ inputs.clusterFqdn }}
           fileValuesPath: ${{ inputs.fileValuesPath }}
           GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
+          CERTIFICATE: ${{inputs.CERTIFICATE }} 
+          CA_CERTIFICATE: ${{inputs.CA_CERTIFICATE }}
+          KEY_CERTIFICATE: ${{inputs.KEY_CERTIFICATE }} 
           helmRepoRef: ${{ inputs.helmRepoRef }}
           helmRepo: ${{ inputs.helmRepo }}
           cpuLimit: ${{ inputs.cpuLimit }}

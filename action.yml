@@ -1,5 +1,5 @@
-name: 'Image Tag Check'
-description: 'Action to check if provided image tag exists for a certain app and project'
+name: 'Image Tag Check Multinstance'
+description: 'Action to check if provided image tags exist for each instance of a certain app and project'
 inputs:
   # ACR
   REGISTRY_USER:
@@ -20,27 +20,45 @@ inputs:
     description: "Nombre del proyecto/equipo"
     required: true
   appVersion:
-    description: "tag a buscar"
+    description: "tag base a buscar"
+    required: true
+
+  # Instancias
+  instancias:
+    description: 'Instancias a desplegar (Ej ["00","01"])'
     required: true
 
 runs:
   using: "composite"
   steps:
-      - name: Check tag existence
-        shell: bash
-        run: |
-            tags=$(curl -s -u "${{ inputs.REGISTRY_USER }}:${{ inputs.REGISTRY_PASS }}" "https://${{ inputs.ACR_FULL_NAME }}/v2/${{ inputs.teamProject }}-${{ inputs.appName }}/tags/list" | jq -r '.tags[]')
-            found=false
-            for tag in $tags; do
-              if [ "$tag" = "${{ inputs.appVersion }}" ]; then
-                found=true
-                break
-              fi
-            done
-            if $found; then
-              echo "Se encontró la versión ${{ inputs.appVersion }}"
-              exit 0
-            else
-              echo "No se encontró la versión ${{ inputs.appVersion }}"
-              exit 1
-            fi   
+    - name: Check tag existence
+      shell: bash
+      run: |
+        tags=$(curl -s -u "${{ inputs.REGISTRY_USER }}:${{ inputs.REGISTRY_PASS }}" "https://${{ inputs.ACR_FULL_NAME }}/v2/${{ inputs.teamProject }}-${{ inputs.appName }}/tags/list" | jq -r '.tags[]')
+        all_found=true
+        instancias=$(echo "${{ inputs.instancias }}" | jq -r '.[]')
+
+        for instancia in $instancias; do
+          tag="${{ inputs.appVersion }}-$instancia"
+          found=false
+          for t in $tags; do
+            if [ "$t" = "$tag" ]; then
+              found=true
+              break
+            fi
+          done
+          if ! $found; then
+            echo "No se encontró la versión $tag"
+            all_found=false
+          else
+            echo "Se encontró la versión $tag"
+          fi
+        done
+
+        if ! $all_found; then
+          echo "No se encontraron todas las imagenes requeridas."
+          exit 1
+        else
+          echo "Se encontraron todas las imagenes requeridas."
+          exit 0
+        fi

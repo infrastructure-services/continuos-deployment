@@ -34,31 +34,32 @@ runs:
     - name: Check tag existence
       shell: bash
       run: |
-        tags=$(curl -s -u "${{ inputs.REGISTRY_USER }}:${{ inputs.REGISTRY_PASS }}" "https://${{ inputs.ACR_FULL_NAME }}/v2/${{ inputs.teamProject }}-${{ inputs.appName }}/tags/list" | jq -r '.tags[]')
-        all_found=true
-        instancias=$(echo "${{ inputs.instancias }}" | jq -r '.[]')
+          all_found=true
+          instancias='${{ inputs.instancias }}'
+          instancias2=$(echo "$instancias" | jq -r '.[]')
+          echo "Instancias a Buscar"
+          echo $instancias2
 
-        for instancia in $instancias; do
-          tag="${{ inputs.appVersion }}-$instancia"
-          found=false
-          for t in $tags; do
-            if [ "$t" = "$tag" ]; then
-              found=true
-              break
+          for instancia in $instancias2; do
+            tags=$(curl -s -u "${{ secrets.ACR_NAME }}:${{ secrets.REGISTRY_PASS }}" "https://${{ secrets.ACR_FULL_NAME }}/v2/${{ vars.PROJECT }}-${{ vars.APPNAME }}-$instancia/tags/list" | jq -r '.tags[]')
+            found=false
+            for t in $tags; do
+              if [ "$t" = "${{ inputs.appVersion }}" ]; then
+                found=true
+                break
+              fi
+            done
+            if ! $found; then
+              echo "No se encontró la versión $tag"
+              all_found=false
+            else
+              echo "Se encontró la versión $tag"
             fi
           done
-          if ! $found; then
-            echo "No se encontró la versión $tag"
-            all_found=false
+          if ! $all_found; then
+            echo "No se encontraron todas las imagenes requeridas."
+            exit 1
           else
-            echo "Se encontró la versión $tag"
+            echo "Se encontraron todas las imagenes requeridas."
+            exit 0
           fi
-        done
-
-        if ! $all_found; then
-          echo "No se encontraron todas las imagenes requeridas."
-          exit 1
-        else
-          echo "Se encontraron todas las imagenes requeridas."
-          exit 0
-        fi

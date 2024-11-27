@@ -41,7 +41,7 @@ runs:
           echo $instancias2
 
           for instancia in $instancias2; do
-            tags=$(curl -s -u "${{ secrets.ACR_NAME }}:${{ secrets.REGISTRY_PASS }}" "https://${{ secrets.ACR_FULL_NAME }}/v2/${{ vars.PROJECT }}-${{ vars.APPNAME }}-$instancia/tags/list" | jq -r '.tags[]')
+            tags=$(curl -s -u "${{ inputs.REGISTRY_USER }}:${{ inputs.REGISTRY_PASS }}" "https://${{ inputs.ACR_FULL_NAME }}/v2/${{ inputs.teamProject }}-${{ inputs.appName }}-$instancia/tags/list" | jq -r '.tags[]')
             found=false
             for t in $tags; do
               if [ "$t" = "${{ inputs.appVersion }}" ]; then

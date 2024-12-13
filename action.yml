@@ -1,4 +1,4 @@
-name: 'Build and Deploy'
+name: 'Build and Deploy with Azure Key Vault'
 description: 'Unique step to Build and Deploy'
 inputs:
   # ACR
@@ -81,6 +81,22 @@ inputs:
     description: "url de ARgocd"
     required: true
 
+  # AZURE KEY VAULT
+  AZURE_KEYVAULT_NAME:
+    description: "Nombre del keyvault"
+    required: true
+    default: "solucioneshw"
+  AZURE_KEYVAULT_TENANT:
+    description: "Tenant del keyvault"
+    required: false
+    default: "2815c130-391b-4383-8743-e3413f343e08"
+  AZURE_KEYVAULT_CLIENT_ID:
+    description: "Client ID del keyvault"
+    required: true
+  AZURE_KEYVAULT_SECRET:
+    description: "Secret del keyvault"
+    required: true
+
 outputs:
   name_environment: 
     description: "Nombre del environment"
@@ -131,6 +147,10 @@ runs:
           APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
           helmRepoRef: ${{ inputs.helmRepoRef }}
           helmRepo: ${{ inputs.helmRepo }}
+          AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+          AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+          AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+          AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
       
       - name: build paquete helm.
         id: helm

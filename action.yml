@@ -134,7 +134,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/actions@build-values-test
+        uses: infrastructure-services/actions@build-values
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -167,7 +167,7 @@ runs:
           
       - name: Argo deploy 🚀
         id: argo
-        uses: infrastructure-services/actions@sync-argo
+        uses: infrastructure-services/actions@sync-argo-test
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -182,3 +182,8 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
+          # AZURE KV
+          AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+          AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+          AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+          AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}

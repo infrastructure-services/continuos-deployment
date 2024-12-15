@@ -1,5 +1,5 @@
-name: "Build Android"
-description: "Unique step to Build Android"
+name: "Publish to store Android"
+description: "Unique step to Publish to store Android"
 inputs:
   # App
   appName:
@@ -12,163 +12,106 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
+  artifact_name:
+    description: "nombre del artifact"
+    required: false
+    default: ""
   isProd:
-    description: "si es produccion"
+    description: "flag para saber si es un despliegue productivo"
     required: false
     default: "false"
-  # Build React
-  matrix_version:
-    description: "matrix de pruebas node"
-    required: true
-  fontawesome_token:
-    description: "token de fontawesome"
+  deploymentName:
+    description: "flag para saber si es un despliegue productivo"
     required: false
     default: ""
-  packages_token:
-    description: "token github para autenticarse en packages"
+  filename:
+    description: "nombre del archivo"
     required: false
-    default: ""
-  # Build Android
-  java_version: 
-    description: "version de java para build"
+    default: "app-release-signed.apk"
+  gitOpsUrl:
+    description: "Url de github-integration"
     required: false
-    default: "17"
-  command:
-    description: "comando a ejecutar la build"
-    required: false
-    default: "./gradlew assembleRelease bundleRelease --no-daemon"
-  ANDROID_KEYSTORE_PASSWORD:
-    description: "password del keystore"
-    required: true
-  ANDROID_KEY_ALIAS:
-    description: "alias del keystore"
-    required: true
-  ANDROID_KEYSTORE:
-    description: "keystore"
-    required: true
-
+    default: "https://github-integration-gitops-prod.apps.andreani.com.ar"
 outputs:
-  name_environment:
-    description: "Nombre del environment"
-    value: ${{ steps.setOutputs.outputs.environment }}
-  artifact_name:
-    description: "URL del environment"
-    value: ${{ steps.setOutputs.outputs.artifact_name }}
+  aplicacion_id:
+    description: "aplicacion id"
+    value: ${{ steps.publish.outputs.aplicacion_id }}
 
 runs:
   using: "composite"
   steps:
-    - run: echo Deploy ${{ inputs.environment }}
+    - run: echo publish to ${{ inputs.environment }}
       shell: bash
 
+    - name: Set artifact name
+      id: setArtifactName
+      run: |
+        if [ -z "${{ inputs.artifact_name }}" ]; then
+          echo "artifact_name is empty, setting it to appName and environment"
+          echo "name=${{ inputs.appName }}-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+        else
+          echo "artifact_name is provided: ${{ inputs.artifact_name }}"
+          echo "name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+      
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - name: Set Outputs
-      id: setOutputs
-      shell: bash
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ steps.setArtifactName.outputs.name }}
+        path: app
+
+    - name: Publish to store
+      id: publish
       run: |
-        echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-        echo "artifact_name=${{ inputs.appName }}-${{ inputs.environment }}" >> $GITHUB_OUTPUT
-        # si es prod el nombre se mantiene, si no es prod se le agrega el environment
-        if [ "${{ inputs.isProd }}" == "false" ]; then
-          echo "internal_name=[${{ inputs.environment }}] ${{ inputs.appName }}" >> $GITHUB_OUTPUT
+        echo "Publishing to store"
+        echo "appName: ${{ inputs.appName }}"
+        echo "appVersion: ${{ inputs.appVersion }}"
+        echo "environment: ${{ inputs.environment }}"
+        echo "artifact_name: ${{ inputs.artifact_name }}"
+        echo "isProd: ${{ inputs.isProd }}"
+        echo "gitOpsUrl: ${{ inputs.gitOpsUrl }}"
+        echo "deploymentName: ${{ inputs.deploymentName }}"
+
+        # Set Organization and RepositoryName from GitHub context
+        ORGANIZATION="${{ github.repository_owner }}"
+        REPOSITORY="${{ github.repository }}"
+
+        if [ -z "${{ inputs.deploymentName }}" ]; then
+          DEPLOYMENT_NAME="${{ inputs.environment }}"
         else
-          echo "internal_name=${{ inputs.appName }}" >> $GITHUB_OUTPUT
+          DEPLOYMENT_NAME="${{ inputs.deploymentName }}"
         fi
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'microsoft' # See 'Supported distributions' for available options
-        java-version: ${{ inputs.java_version }}
+        response=$(curl -X POST "${{ inputs.gitOpsUrl }}/api/v1/app-distribution" \
+              -H "accept: application/json" \
+              -H "Content-Type: multipart/form-data" \
+              -F "Organization=$ORGANIZATION" \
+              -F "RepositoryName=$REPOSITORY" \
+              -F "AppName=${{ inputs.appName }}" \
+              -F "Version=${{ inputs.appVersion }}" \
+              -F "EnvironmentName=${{ inputs.environment }}" \
+              -F "IsEnvironmentProduction=${{ inputs.isProd }}" \
+              -F "DeploymentName=$DEPLOYMENT_NAME" \
+              -F "File=@app/${{ inputs.filename }}" \
+              --connect-timeout 30 \
+              --max-time 60 \
+              -w "%{http_code}" \
+              -o response_body.txt)
 
-    - uses: architecture-it/actions@react-base-library
-      with:
-        matrix_version: ${{ inputs.matrix_version }}
-        # secrets enabled in all organizations
-        packages_token: ${{ inputs.packages_token }}
-        fontawesome_token: ${{ inputs.fontawesome_token }}
-
-    - name: Cache Gradle Wrapper
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
-
-    - name: Cache Gradle Dependencies
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-caches-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-caches-
-
-    - name: Bump version
-      uses: chkfung/android-version-actions@v1.2.3
-      with:
-        gradlePath: android/app/build.gradle # or app/build.gradle.kts
-        versionName: ${{ inputs.appVersion }} 
-        versionCode: ${{ github.run_number }}
-
-    - name: Make Gradlew Executable
-      run: cd android && chmod +x ./gradlew
-      shell: bash
-
-    - name: Build Android Release
-      env:
-          ENVFILE: .env.${{ inputs.environment }}
-          APP_SUFFIX: ${{ inputs.environment }}
-          APP_NAME: ${{ steps.setOutputs.outputs.internal_name }}
-
-      shell: bash
-      run: |
-        cd android && ${{ inputs.command }}
-      
-    - run: cd android && ls -la app/build/outputs/apk/release
-      shell: bash
-
-    - name: Setup build tool version variable
-      shell: bash
-      run: |
-        BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
-        echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
-        echo Last build tool version is: $BUILD_TOOL_VERSION
-
-    - name: Sign app APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app
-      with:
-        releaseDirectory: android/app/build/outputs/apk/release
-        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
-        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
-        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
-      env:
-        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
-    # Upload to Artifact
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.setOutputs.outputs.artifact_name }}
-        path: ${{steps.sign_app.outputs.signedReleaseFile}}
+        echo "API Response: $(<response_body.txt)"
         
-    - name: Sign app APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app_aab
-      with:
-        releaseDirectory: android/app/build/outputs/bundle/release
-        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
-        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
-        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
-      env:
-        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
-    # Upload to Artifact
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.setOutputs.outputs.artifact_name }}.aab
-        path: ${{steps.sign_app_aab.outputs.signedReleaseFile}}
+        # Extraer el status_code de la respuesta usando grep y sed
+        #status_code=$(grep -o '"statusCode":[^,]*' response_body.txt | sed 's/[^0-9]*//g')
+        
+        #if [ "$status_code" -eq 200 ]; then
+        #  echo "statusCode: 200" >> $GITHUB_OUTPUT
+        #else
+        #  echo "Error: $response"
+        #fi
+      shell: bash

@@ -134,7 +134,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/actions@build-values
+        uses: infrastructure-services/actions@build-values-test
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

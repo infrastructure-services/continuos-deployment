@@ -67,7 +67,6 @@ inputs:
     description: "Certificado ARO Key"
     required: false
     default: ""
-
   # HELM
   helmChartVersionLatest:
     description: "VersionHelm"
@@ -86,6 +85,22 @@ inputs:
   ARGO_URL:
     description: "url de ARgocd"
     required: true
+
+  # AZURE
+  AZURE_KEYVAULT_NAME:
+    description: "Nombre del keyvault"
+    required: true
+    default: "solucioneshw"
+  AZURE_KEYVAULT_TENANT:
+      description: "Tenant del keyvault"
+      required: false
+      default: "2815c130-391b-4383-8743-e3413f343e08"
+  AZURE_KEYVAULT_CLIENT_ID:
+      description: "Client ID del keyvault"
+      required: true
+  AZURE_KEYVAULT_SECRET:
+      description: "Secret del keyvault"
+      required: true
 
 outputs:
   name_environment: 
@@ -124,7 +139,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/actions@build-values-l
+        uses: infrastructure-services/actions@build-values-l-test
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -139,6 +154,7 @@ runs:
           helmRepo: ${{ inputs.helmRepo }}
           cpuLimit: ${{ inputs.cpuLimit }}
           memLimit: ${{ inputs.memLimit }}
+          
       
       - name: build paquete helm.
         id: helm

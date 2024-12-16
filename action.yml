@@ -20,6 +20,10 @@ inputs:
     description: "flag para saber si es un despliegue productivo"
     required: false
     default: "false"
+  deploymentName:
+    description: "flag para saber si es un despliegue productivo"
+    required: false
+    default: ""
   filename:
     description: "nombre del archivo"
     required: false
@@ -72,10 +76,17 @@ runs:
         echo "artifact_name: ${{ inputs.artifact_name }}"
         echo "isProd: ${{ inputs.isProd }}"
         echo "gitOpsUrl: ${{ inputs.gitOpsUrl }}"
+        echo "deploymentName: ${{ inputs.deploymentName }}"
 
         # Set Organization and RepositoryName from GitHub context
         ORGANIZATION="${{ github.repository_owner }}"
         REPOSITORY="${{ github.repository }}"
+
+        if [ -z "${{ inputs.deploymentName }}" ]; then
+          DEPLOYMENT_NAME="${{ inputs.environment }}"
+        else
+          DEPLOYMENT_NAME="${{ inputs.deploymentName }}"
+        fi
 
         response=$(curl -X POST "${{ inputs.gitOpsUrl }}/api/v1/app-distribution" \
               -H "accept: application/json" \
@@ -86,7 +97,7 @@ runs:
               -F "Version=${{ inputs.appVersion }}" \
               -F "EnvironmentName=${{ inputs.environment }}" \
               -F "IsEnvironmentProduction=${{ inputs.isProd }}" \
-              -F "DeploymentName=${{ inputs.environment }}" \
+              -F "DeploymentName=$DEPLOYMENT_NAME" \
               -F "File=@app/${{ inputs.filename }}" \
               --connect-timeout 30 \
               --max-time 60 \

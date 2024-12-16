@@ -154,6 +154,10 @@ runs:
           helmRepo: ${{ inputs.helmRepo }}
           cpuLimit: ${{ inputs.cpuLimit }}
           memLimit: ${{ inputs.memLimit }}
+          AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+          AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+          AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+          AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
           
       
       - name: build paquete helm.

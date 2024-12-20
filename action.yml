@@ -89,18 +89,20 @@ inputs:
   # AZURE
   AZURE_KEYVAULT_NAME:
     description: "Nombre del keyvault"
-    required: true
-    default: "solucioneshw"
+    required: false
+    default: ""
   AZURE_KEYVAULT_TENANT:
-      description: "Tenant del keyvault"
-      required: false
-      default: "2815c130-391b-4383-8743-e3413f343e08"
+    description: "Tenant del keyvault"
+    required: false
+    default: ""
   AZURE_KEYVAULT_CLIENT_ID:
-      description: "Client ID del keyvault"
-      required: true
+    description: "Client ID del keyvault"
+    required: false
+    default: ""
   AZURE_KEYVAULT_SECRET:
-      description: "Secret del keyvault"
-      required: true
+    description: "Secret del keyvault"
+    required: false
+    default: ""
 
 outputs:
   name_environment: 

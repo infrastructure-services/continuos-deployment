@@ -58,7 +58,25 @@ inputs:
     description: "Request de Memoria del Pod"
     required: false
     default: "200Mi"
-    
+
+  # AZURE KEY VAULT
+  AZURE_KEYVAULT_NAME:
+    description: "Nombre del keyvault"
+    required: true
+    default: ""
+  AZURE_KEYVAULT_TENANT:
+    description: "Tenant del keyvault"
+    required: false
+    default: ""
+  AZURE_KEYVAULT_CLIENT_ID:
+    description: "Client ID del keyvault"
+    required: false
+    default: ""
+  AZURE_KEYVAULT_SECRET:
+    description: "Secret del keyvault"
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -109,7 +127,21 @@ runs:
         echo 'key: |' >> values.yaml
         echo -e "${{inputs.APPS_KEY_CERTIFICATE}}" |  sed 's/^/    /' >> values.yaml
         echo 'name: ${{inputs.teamProject}}-${{inputs.appName}}' >> Chart.yaml
-        
+
+    - name: Inject Azure Key Vault if exists
+      shell: bash
+      env: 
+        AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
+        AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+        AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+      if: ${{ inputs.AZURE_KEYVAULT_NAME != '' && inputs.AZURE_KEYVAULT_TENANT != '' && inputs.AZURE_KEYVAULT_CLIENT_ID != '' && inputs.AZURE_KEYVAULT_SECRET != '' }}
+      run: |
+        sed -i "/replicacontroller:/i \    AzureKeyVault__Name: ${AZURE_KEYVAULT_NAME}" values.yaml
+        sed -i "/replicacontroller:/i \    AzureKeyVault__TenantId: ${AZURE_KEYVAULT_TENANT}" values.yaml
+        sed -i "/replicacontroller:/i \    AzureKeyVault__ClientId: ${AZURE_KEYVAULT_CLIENT_ID}" values.yaml
+        sed -i "/replicacontroller:/i \    AzureKeyVault__ClientSecret: ${AZURE_KEYVAULT_SECRET}" values.yaml
+
     - name: show values
       shell: bash
       run: cat values.yaml

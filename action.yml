@@ -62,7 +62,7 @@ inputs:
   # AZURE KEY VAULT
   AZURE_KEYVAULT_NAME:
     description: "Nombre del keyvault"
-    required: true
+    required: false
     default: ""
   AZURE_KEYVAULT_TENANT:
     description: "Tenant del keyvault"

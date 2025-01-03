@@ -97,7 +97,7 @@ runs:
           else
             echo "El proyecto no existe en ArgoCD, procediendo a crearlo"
             argoCommand="argocd proj create ${{inputs.namespace}} --upsert --dest https://kubernetes.default.svc,${{inputs.namespace}} --src  ${{ inputs.ACR_FULL_NAME }}/helm --grpc-web"
-            for i in {1..5}
+            for i in {1..2}
             do
             if eval "$argoCommand"; then
                 echo "ArgoCD Project create OK"
@@ -126,7 +126,7 @@ runs:
           variableOk=0
           argoCommand="argocd app create ${{ steps.name.outputs.applicationName }} --repo ${{ inputs.ACR_FULL_NAME }}/helm --helm-chart ${{inputs.teamProject}}-${{inputs.appName}} --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision ${{ inputs.helmChartVersionLatest}} --dest-namespace ${{inputs.namespace}} --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project ${{inputs.namespace}} --grpc-web"
           
-          for i in {1..5}
+          for i in {1..2}
           do
           if eval "$argoCommand"; then
               echo "ArgoCD app create OK"
@@ -170,7 +170,7 @@ runs:
           #Synch del repo (Fuerza el cambio de la aplicación a lo que se encuentra en los repos)
           argoCommand="argocd app sync ${{ steps.name.outputs.applicationName }} --prune --force --retry-limit 5 --grpc-web --async"
           variableOk=0
-          for i in {1..5}
+          for i in {1..3}
           do
           if eval "$argoCommand"; then
               echo "ArgoCD sync OK"
@@ -192,7 +192,7 @@ runs:
         run: |
           #Wait. Espera la synchronizacion, esperan 40s, esperan 3 veces
           argoWait="argocd app wait ${{ steps.name.outputs.applicationName }} --health --operation --timeout 30"
-          for i in {1..3}
+          for i in {1..2}
           do
           if eval "$argoWait"; then
                 echo "ArgoCD app wait OK"

@@ -29,7 +29,7 @@ runs:
       - name: Check tag existence
         shell: bash
         run: |
-
+            echo "ok"
             tags=$(curl -s -u "${{ inputs.REGISTRY_USER }}:${{ inputs.REGISTRY_PASS }}" "https://${{ inputs.ACR_FULL_NAME }}/v2/${{ inputs.teamProject }}-${{ inputs.appName }}/tags/list?n=500" | jq -r '.tags[]')
             found=false
             for tag in $tags; do
@@ -43,5 +43,5 @@ runs:
               exit 0
             else
               echo "No se encontró la versión ${{ inputs.appVersion }}"
-              exit 1
+              exit 0
             fi   

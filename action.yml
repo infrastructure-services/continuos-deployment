@@ -42,6 +42,6 @@ runs:
               echo "Se encontró la versión ${{ inputs.appVersion }}"
               exit 0
             else
-              echo "No se encontró la versión ${{ inputs.appVersion }}"
-              exit 0
+              echo "::notice::No se encontró la versión ${{ inputs.appVersion }}. Revisar que se haya escrito bien"
+              exit 1
             fi   

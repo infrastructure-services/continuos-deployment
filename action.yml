@@ -211,7 +211,7 @@ runs:
 
          # Verifico si está "Healthy" e informo
          if [[ "$APP_STATUS" == "Healthy" ]]; then
-          echo "::notice::La aplicación ${{ steps.name.outputs.applicationName }} está en estado Health=Healthy ✅ en el ambiente ${{inputs.namespace}}"
+          echo "::notice::La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅ en el ambiente ${{inputs.namespace}}"
          else
           echo "::notice::La aplicación ${{ steps.name.outputs.applicationName }}' NO está Healthy ❌ en el ambiente ${{inputs.namespace}} (Estado actual: $APP_STATUS), se recomienda revisar estado del servicio"
          fi

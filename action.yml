@@ -207,11 +207,20 @@ runs:
         shell: bash
         run: |
          # Obtengo el estado de la aplicación
-         APP_STATUS=$(argocd app get ${{ steps.name.outputs.applicationName }} | grep "Health Status" | awk '{print $NF}')
-
+         OUTPUT=$(argocd app get ${{ steps.name.outputs.applicationName }})
+         APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
+         SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
+         
          # Verifico si está "Healthy" e informo
          if [[ "$APP_STATUS" == "Healthy" ]]; then
-          echo "::notice::La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅ en el ambiente ${{inputs.namespace}}"
+          echo "::notice::✅La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅"
          else
-          echo "::notice::La aplicación ${{ steps.name.outputs.applicationName }}' NO está Healthy ❌ en el ambiente ${{inputs.namespace}} (Estado actual: $APP_STATUS), se recomienda revisar estado del servicio"
+          echo "::notice::❌La aplicación ${{ steps.name.outputs.applicationName }}' NO está Healthy ❌ (Estado actual: $APP_STATUS), se recomienda revisar estado del servicio"
+         fi
+         sleep 10
+         # Verificamos si quedó Sincronizada e informamos
+         if [[ "$SYNC_STATUS" == "Synced" ]]; then
+           echo "::notice::👍La aplicación '$APP_NAME' está sincronizada con los cambios de este despliegue"
+         else
+           echo "::notice::👎La aplicación '$APP_NAME' no está sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
          fi

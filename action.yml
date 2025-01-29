@@ -140,16 +140,12 @@ runs:
           location: ${{ inputs.AZ_LOCATION }}
           environmentVariables: ${{ steps.BuildVariables.outputs.env_list }}
 
-      - name: Get Container App URL
+      - name: Get Container App URL and Name
         run: |
-          az containerapp show --name ${{ steps.setAppName.outputs.containerAppName }} --resource-group ${{ inputs.AZRG }} --query properties.configuration.ingress.fqdn --output tsv
-        id: get-url
+          url=$(az containerapp show --name ${{ steps.setAppName.outputs.containerAppName }} --resource-group ${{ inputs.AZRG }} --query properties.configuration.ingress.fqdn --output tsv)
+          echo "URL: $url"
+          echo "::set-output name=url_environment::$url"
+          echo "::set-output name=name_environment::${{ inputs.environment }}"
         continue-on-error: true
         shell: bash
         
-      - name: Show Container App URL
-        run: |
-          echo "::set-output name=url_environment::${{ steps.get-url.outputs.stdout }}"
-          echo "::set-output name=name_environment::${{ steps.setAppName.outputs.containerAppName }}"
-        continue-on-error: true
-        shell: bash

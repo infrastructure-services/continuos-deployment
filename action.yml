@@ -215,7 +215,7 @@ runs:
          if [[ "$APP_STATUS" == "Healthy" ]]; then
           echo "::notice::✅La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅"
          else
-          echo "::notice::❌La aplicación ${{ steps.name.outputs.applicationName }} NO está Healthy ❌ (Estado actual: $APP_STATUS), se recomienda revisar estado del servicio"
+          echo "::notice::❌La aplicación ${{ steps.name.outputs.applicationName }} NO está Healthy ❌ (Estado actual: $APP_STATUS), la aplicación esta en crashloop, revisar los logs del pod "
           exit 1
          fi
          sleep 10

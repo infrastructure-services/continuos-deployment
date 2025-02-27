@@ -41,7 +41,7 @@ inputs:
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "eks-standard"
+    default: "hop-standard"
   cpuLimit:
     description: "Limite de CPU del pod"
     required: false
@@ -134,7 +134,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/continuos-deployment@eks-generate-values
+        uses: infrastructure-services/continuos-deployment@hop-generate-values
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -154,7 +154,7 @@ runs:
       
       - name: build paquete helm.
         id: helm
-        uses: infrastructure-services/continuos-deployment@eks-pack-helm
+        uses: infrastructure-services/continuos-deployment@hop-pack-helm
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -167,7 +167,7 @@ runs:
           
       - name: Argo deploy 🚀
         id: argo
-        uses: infrastructure-services/continuos-deployment@eks-sync-argo
+        uses: infrastructure-services/continuos-deployment@hop-sync-argo
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

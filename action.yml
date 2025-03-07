@@ -210,7 +210,7 @@ runs:
          OUTPUT=$(argocd app get ${{ steps.name.outputs.applicationName }})
          APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
          SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
-         sleep 20
+         sleep 30
          # Verifico si está "Healthy" e informo
          if [[ "$APP_STATUS" == "Healthy" ]]; then
           echo "::notice::✅La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅"

@@ -39,9 +39,9 @@ runs:
               fi
             done
             if $found; then
-              echo "Se encontró la versión ${{ inputs.appVersion }}"
+              echo "::notice::✅Versión correcta: ${{ inputs.appVersion }}"
               exit 0
             else
-              echo "::notice::No se encontró la versión ${{ inputs.appVersion }}. Revisar que se haya escrito bien"
+              echo "::notice::⛔No se encontró la versión ${{ inputs.appVersion }}. Revisar que se haya escrito bien"
               exit 1
             fi   

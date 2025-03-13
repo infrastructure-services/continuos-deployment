@@ -53,9 +53,17 @@ runs:
         run: |-
           helmLint="helm lint --values=values.yaml > /dev/null 2>&1"
           echo "-----------------------------------------"
+          echo "Archivos de Template"
+          echo "-----------------------------------------"
           ls
           echo "-----------------------------------------"
+          echo "Contenido del Values"
+          echo "-----------------------------------------"
           cat ./templates/deploymentconfig.yaml
+          echo "-----------------------------------------"
+          echo "Contenido del Deploymentconfig"
+          echo "-----------------------------------------"
+           cat ./templates/deploymentconfig.yaml
           echo "-----------------------------------------"
           if eval "$helmLint"; then
              echo "HELM Lint OK - The template folder and values file format is OK";

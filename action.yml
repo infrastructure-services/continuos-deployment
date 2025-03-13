@@ -176,7 +176,7 @@ runs:
       
       - name: build paquete helm.
         id: helm
-        uses: infrastructure-services/continuos-deployment@pack-helm
+        uses: infrastructure-services/continuos-deployment@pack-helm-novalidation
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

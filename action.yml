@@ -52,6 +52,11 @@ runs:
         shell: bash
         run: |-
           helmLint="helm lint --values=values.yaml > /dev/null 2>&1"
+          echo "-----------------------------------------"
+          ls
+          echo "-----------------------------------------"
+          cat ./templates/deploymentconfig.yaml
+          echo "-----------------------------------------"
           if eval "$helmLint"; then
              echo "HELM Lint OK - The template folder and values file format is OK";
           else

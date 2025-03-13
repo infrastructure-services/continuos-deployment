@@ -59,7 +59,7 @@ runs:
           echo "-----------------------------------------"
           echo "Contenido del Values"
           echo "-----------------------------------------"
-          cat ./templates/deploymentconfig.yaml
+          cat ./values.yaml
           echo "-----------------------------------------"
           echo "Contenido del Deploymentconfig"
           echo "-----------------------------------------"

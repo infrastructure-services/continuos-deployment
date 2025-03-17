@@ -49,7 +49,7 @@ inputs:
   memLimit:
     description: "Limite de Memoria del Pod"
     required: false
-    default: "1Gi"
+    default: "2Gi"
   cpuRequest:
     description: "Request de CPU del pod"
     required: false

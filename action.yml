@@ -190,16 +190,16 @@ runs:
       - name: Wait Sync
         shell: bash
         run: |
-          #Wait. Espera la synchronizacion, esperan 40s, esperan 3 veces
+          #Wait. Espera la synchronizacion, esperan 90s, esperan 5 veces
           argoWait="argocd app wait ${{ steps.name.outputs.applicationName }} --health --operation --timeout 30"
-          for i in {1..2}
+          for i in {1..5}
           do
           if eval "$argoWait"; then
                 echo "ArgoCD app wait OK"
                 break
             else
                 echo "ArgoCD app wait $i/5"
-                sleep 40
+                sleep 60
             fi
           done
           

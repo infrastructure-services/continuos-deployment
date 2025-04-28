@@ -61,5 +61,6 @@ runs:
             exit 1
           else
             echo "Se encontraron todas las imagenes requeridas."
+            echo "::notice::✅Versión correcta: ${{ inputs.appVersion }}"
             exit 0
           fi

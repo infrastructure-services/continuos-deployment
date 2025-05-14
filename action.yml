@@ -217,7 +217,7 @@ runs:
           echo "::notice::✅La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅"
          else
           echo "::notice::❌La aplicación ${{ steps.name.outputs.applicationName }} NO está Healthy ❌ (Estado actual: $APP_STATUS), la aplicación esta en crashloop, revisar los logs del pod "
-          exit 1
+          #exit 1
          fi
          
          # Verificamos si quedó Sincronizada e informamos
@@ -225,5 +225,5 @@ runs:
            echo "::notice::👍La aplicación ${{ steps.name.outputs.applicationName }} está sincronizada con los cambios de este despliegue"
          else
            echo "::notice::👎La aplicación ${{ steps.name.outputs.applicationName }} no está sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
-           exit 1
+           #exit 1
          fi

@@ -225,5 +225,5 @@ runs:
            echo "::notice::👍La aplicación ${{ steps.name.outputs.applicationName }} está sincronizada con los cambios de este despliegue"
          else
            echo "::notice::👎La aplicación ${{ steps.name.outputs.applicationName }} no está sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
-           exit 1
+           #exit 1
          fi

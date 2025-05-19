@@ -203,27 +203,37 @@ runs:
             fi
           done
           
-      - name: Show status
+      - name: Check ArgoCD Application Status
         shell: bash
         run: |
-         # Obtengo el estado de la aplicación
-         sleep 30
-         OUTPUT=$(argocd app get ${{ steps.name.outputs.applicationName }})
-         APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
-         SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
-         sleep 10
-         # Verifico si está "Healthy" e informo
-         if [[ "$APP_STATUS" == "Healthy" ]]; then
-          echo "::notice::✅La aplicación ${{ steps.name.outputs.applicationName }} está en estado Healthy ✅"
-         else
-          echo "::notice::❌La aplicación ${{ steps.name.outputs.applicationName }} NO está Healthy ❌ (Estado actual: $APP_STATUS), la aplicación esta en crashloop, revisar los logs del pod "
-          exit 0
-         fi
-         
-         # Verificamos si quedó Sincronizada e informamos
-         if [[ "$SYNC_STATUS" == "Synced" ]]; then
-           echo "::notice::👍La aplicación ${{ steps.name.outputs.applicationName }} está sincronizada con los cambios de este despliegue"
-         else
-           echo "::notice::👎La aplicación ${{ steps.name.outputs.applicationName }} no está sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
-           #exit 1
-         fi
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+          APP_NAME="${{ steps.name.outputs.applicationName }}"
+      
+          while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
+            echo "🔍 Intento $ATTEMPT de $MAX_ATTEMPTS para corroborar estado de $APP_NAME..."
+      
+            OUTPUT=$(argocd app get "$APP_NAME")
+            APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
+            SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
+      
+            echo "➡️  Estado de salud: $APP_STATUS"
+            echo "➡️  Estado de sincronización: $SYNC_STATUS"
+      
+            if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
+              echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
+              exit 0
+            fi
+      
+            if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
+              echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."
+              sleep 120
+            fi
+            ((ATTEMPT++))
+          done
+          if [[ "$APP_STATUS" == "Healthy" ]]; then
+            echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
+          else
+            echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
+          fi
+          exit 1

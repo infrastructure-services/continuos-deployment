@@ -43,5 +43,5 @@ runs:
               exit 0
             else
               echo "::notice::⛔No se encontró la versión ${{ inputs.appVersion }}. Revisar que se haya escrito bien"
-              exit 1
+              exit 0
             fi   

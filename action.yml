@@ -53,7 +53,7 @@ inputs:
   cpuRequest:
     description: "Request de CPU del pod"
     required: false
-    default: "150m"
+    default: "40m"
   memRequest:
     description: "Request de Memoria del Pod"
     required: false

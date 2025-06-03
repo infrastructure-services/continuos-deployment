@@ -128,6 +128,15 @@ runs:
         echo -e "${{inputs.APPS_KEY_CERTIFICATE}}" |  sed 's/^/    /' >> values.yaml
         echo 'name: ${{inputs.teamProject}}-${{inputs.appName}}' >> Chart.yaml
 
+        # 🚀 Agregás tu sección "env_default"
+        echo 'env_default:' >> values.yaml
+        echo '  ELASTIC_APM_ACTIVE: true' >> values.yaml
+        echo '  ELASTIC_APM_ENABLED: true' >> values.yaml
+        echo '  REACT_APP_DISABLE_APM: 0' >> values.yaml
+        echo '  NEXT_PUBLIC_DISABLE_APM: 0' >> values.yaml
+        echo '  ELASTIC_APM_SERVER_URL: "https://apm-mon.andreani.com"' >> values.yaml
+        echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.teamProject}}-${{inputs.appName}}' >> values.yaml
+
     - name: Inject Azure Key Vault if exists
       shell: bash
       env: 

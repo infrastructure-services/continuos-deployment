@@ -100,7 +100,7 @@ runs:
               -F "DeploymentName=$DEPLOYMENT_NAME" \
               -F "File=@app/${{ inputs.filename }}" \
               --connect-timeout 30 \
-              --max-time 60 \
+              --max-time 300 \
               -w "%{http_code}" \
               -o response_body.txt)
 

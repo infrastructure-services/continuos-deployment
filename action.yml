@@ -41,7 +41,7 @@ inputs:
   helmRepoRef:
     description: "Ref del repositorio de Helm"
     required: false
-    default: "hop-standard"
+    default: "hop-test"
   cpuLimit:
     description: "Limite de CPU del pod"
     required: false
@@ -181,3 +181,4 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
+

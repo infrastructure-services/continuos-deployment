@@ -82,9 +82,6 @@ runs:
       with:
         github_token: ${{ inputs.github_token }}
         only_version: 'false'
-        jira_email: ${{ inputs.jira_email }}
-        jira_project_id: ${{ inputs.jira_project_id }}
-        jira_api_token: ${{ inputs.jira_api_token }}
         jira_release_name: ${{ inputs.teamProject }}-${{ inputs.appName }}
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
 

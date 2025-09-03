@@ -67,7 +67,7 @@ runs:
           echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME }} --username ${{ inputs.ACR_USERNAME }} --password-stdin
           echo 'login a argocd'
           variableOk=0
-          argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web"
+          argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
           for i in {1..5}
           do
           if eval "$argoCommand"; then
@@ -237,3 +237,4 @@ runs:
             echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
           fi
           exit 1
+

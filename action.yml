@@ -71,7 +71,7 @@ runs:
           
           echo 'login a argocd'
           variableOk=0
-          argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web"
+          argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
           for i in {1..5}
           do
           if eval "$argoCommand"; then
@@ -226,3 +226,4 @@ runs:
            echo "::notice::👎La aplicación ${{ steps.name.outputs.applicationName }} no está sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
            exit 1
          fi
+

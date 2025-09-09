@@ -129,7 +129,7 @@ runs:
       - name: Check Application
         uses: infrastructure-services/continuos-integration@check-if-exists-app
         with:
-          gitOpsUrl: "https://github-integration-gitops-prod.apps.andreani.com.ar"
+          gitOpsUrl: "https://github-integration.andreani.com"
         
       - name: Set Outputs
         id: setOutputs
@@ -204,3 +204,4 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
+

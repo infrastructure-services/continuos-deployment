@@ -135,9 +135,9 @@ runs:
         echo '  REACT_APP_DISABLE_APM: 0' >> values.yaml
         echo '  NEXT_PUBLIC_DISABLE_APM: 0' >> values.yaml
         echo '  ELASTIC_APM_SERVER_URL: "https://apm-mon.andreani.com"' >> values.yaml
-        echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.teamProject}}-${{inputs.appName}}' >> values.yaml
+        echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  Observability__ServerUrls: "https://apm-mon.andreani.com"' >> values.yaml
-        echo '  Observability__ServiceName: ${{inputs.namespace}}--${{inputs.appName}}' >> values.yaml
+        echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
 
 
     - name: Inject Azure Key Vault if exists
@@ -171,5 +171,6 @@ runs:
           values.yaml
           Chart.yaml
           templates/
+
 
 

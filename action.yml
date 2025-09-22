@@ -115,6 +115,12 @@ inputs:
     required: false
     default: ""
 
+  # Observabilidad
+  APM_SERVER_URL:
+    description: "Url de APM"
+    required: false
+    default: "https://apm-mon.andreani.com"
+
 outputs:
   name_environment: 
     description: "Nombre del environment"
@@ -173,6 +179,7 @@ runs:
           AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
           AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
           AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
+          APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
       
       - name: build paquete helm.
         id: helm

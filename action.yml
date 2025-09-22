@@ -77,6 +77,32 @@ inputs:
     required: false
     default: ""
 
+  #Observability Variables
+  ELASTIC_APM_ACTIVE:
+    description: "APM Activo"
+    required: false
+    default: "true"
+  ELASTIC_APM_ENABLED:
+    description: "APM Enabled"
+    required: false
+    default: "true"
+  REACT_APP_DISABLE_APM:
+    description: "APM Desactivado para las apps de React"
+    required: false
+    default: "0"
+  NEXT_PUBLIC_DISABLE_APM:
+    description: "APM Desactivado para las apps de nextJs"
+    required: false
+    default: "0"
+  APM_SERVER_URL:
+    description: "Url de APM"
+    required: false
+    default: "https://apm-mon.andreani.com"
+  APM_SERVICE_NAME:
+    description: "Service Name específico (Opcional, no se usa)"
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -130,13 +156,13 @@ runs:
 
         # 🚀 Agregás tu sección "env_default"
         echo 'env_default:' >> values.yaml
-        echo '  ELASTIC_APM_ACTIVE: true' >> values.yaml
-        echo '  ELASTIC_APM_ENABLED: true' >> values.yaml
-        echo '  REACT_APP_DISABLE_APM: 0' >> values.yaml
-        echo '  NEXT_PUBLIC_DISABLE_APM: 0' >> values.yaml
-        echo '  ELASTIC_APM_SERVER_URL: "https://apm-mon.andreani.com"' >> values.yaml
+        echo '  ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
+        echo '  ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml
+        echo '  REACT_APP_DISABLE_APM: ${{ inputs.REACT_APP_DISABLE_APM }}' >> values.yaml
+        echo '  NEXT_PUBLIC_DISABLE_APM: ${{ inputs.NEXT_PUBLIC_DISABLE_APM }}' >> values.yaml
+        echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
-        echo '  Observability__ServerUrls: "https://apm-mon.andreani.com"' >> values.yaml
+        echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
 
 

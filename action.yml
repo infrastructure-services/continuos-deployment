@@ -133,7 +133,7 @@ runs:
               variableOk=1
               break
              else
-               echo "ArgoCD app create $i/5"
+               echo "ArgoCD app create $i/2"
                sleep 40
              fi
           done
@@ -237,4 +237,5 @@ runs:
             echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
           fi
           exit 1
+
 

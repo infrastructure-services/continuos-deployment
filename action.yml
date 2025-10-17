@@ -78,7 +78,7 @@ runs:
 
     - name: 📑Jira integration
       id: version
-      uses: architecture-it/actions@next-version
+      uses: architecture-it/actions@next-version-test
       with:
         github_token: ${{ inputs.github_token }}
         only_version: 'false'
@@ -114,3 +114,4 @@ runs:
       shell: bash
     - run: echo "✅ Success"
       shell: bash
+

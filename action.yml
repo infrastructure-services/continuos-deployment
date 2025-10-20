@@ -45,6 +45,11 @@ inputs:
     description: Jira Email
     required: false
 
+  webhook_url_teams:
+    description: "Webhook URL de Teams para notificaciones"
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -78,12 +83,13 @@ runs:
 
     - name: 📑Jira integration
       id: version
-      uses: architecture-it/actions@next-version
+      uses: architecture-it/actions@next-version-test
       with:
         github_token: ${{ inputs.github_token }}
         only_version: 'false'
         jira_release_name: ${{ inputs.teamProject }}-${{ inputs.appName }}
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
+        webhook_url_teams: ${{ inputs.webhook_url_teams }}
 
     - name: "Pull-Tag-Push imagen"
       if: steps.version.outputs.new-version != ''
@@ -114,3 +120,5 @@ runs:
       shell: bash
     - run: echo "✅ Success"
       shell: bash
+
+

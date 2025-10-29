@@ -158,7 +158,7 @@ runs:
           
       - name: Generate values.yaml
         id: value
-        uses: infrastructure-services/continuos-deployment@generate-values
+        uses: infrastructure-services/continuos-deployment@generate-values-oldakv
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}
@@ -211,5 +211,6 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
+
 
 

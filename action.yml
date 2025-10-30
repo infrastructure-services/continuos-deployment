@@ -76,6 +76,10 @@ inputs:
     description: "Secret del keyvault"
     required: false
     default: ""
+  AZURE_KEYVAULT_PREFIX:
+    description: "Prefijo de las variables de la app en keyvault"
+    required: false
+    default: ""
 
   #Observability Variables
   ELASTIC_APM_ACTIVE:
@@ -173,12 +177,14 @@ runs:
         AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+        AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
       if: ${{ inputs.AZURE_KEYVAULT_NAME != '' && inputs.AZURE_KEYVAULT_TENANT != '' && inputs.AZURE_KEYVAULT_CLIENT_ID != '' && inputs.AZURE_KEYVAULT_SECRET != '' }}
       run: |
         sed -i "/replicacontroller:/i \    AzureKeyVault__Name: ${AZURE_KEYVAULT_NAME}" values.yaml
         sed -i "/replicacontroller:/i \    AzureKeyVault__TenantId: ${AZURE_KEYVAULT_TENANT}" values.yaml
         sed -i "/replicacontroller:/i \    AzureKeyVault__ClientId: ${AZURE_KEYVAULT_CLIENT_ID}" values.yaml
         sed -i "/replicacontroller:/i \    AzureKeyVault__ClientSecret: ${AZURE_KEYVAULT_SECRET}" values.yaml
+        sed -i "/replicacontroller:/i \    AzureKeyVault__Prefix: ${AZURE_KEYVAULT_PREFIX}" values.yaml
 
     - name: show values
       shell: bash

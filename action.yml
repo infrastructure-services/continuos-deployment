@@ -114,6 +114,10 @@ inputs:
     description: "Secret del keyvault"
     required: false
     default: ""
+  AZURE_KEYVAULT_PREFIX:
+    description: "Prefijo de las variables de la app en keyvault"
+    required: false
+    default: ""
 
   # Observabilidad
   APM_SERVER_URL:
@@ -179,6 +183,7 @@ runs:
           AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
           AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
           AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
+          AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
           APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
       
       - name: build paquete helm.

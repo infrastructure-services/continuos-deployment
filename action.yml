@@ -29,6 +29,7 @@ inputs:
     description: "deploy en multiples ambientes"
     required: false
     default: "[]"
+    
   # Values
   github_token:
     description: "Token para descargar el codigo de templates HELM"
@@ -44,6 +45,11 @@ inputs:
   jira_email:
     description: Jira Email
     required: false
+#Futuras notificaciones
+  webhook_url_teams:
+    description: Input para la URL del team en que se publica la notificacion
+    required: false
+    default: " "
 
 runs:
   using: "composite"
@@ -114,3 +120,4 @@ runs:
       shell: bash
     - run: echo "✅ Success"
       shell: bash
+

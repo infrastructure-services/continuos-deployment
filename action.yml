@@ -119,8 +119,6 @@ runs:
           }
           return helmChartVersionLatest
         result-encoding: string
-    - name: Install Helm
-      uses: azure/setup-helm@v3
 
     - name: Copy values.yaml
       shell: bash
@@ -153,6 +151,16 @@ runs:
     - name: show values
       shell: bash
       run: cat values.yaml
+
+    - name: Archive values yaml
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{inputs.appName}}-${{inputs.namespace}}
+        overwrite: true
+        path: |
+          values.yaml
+          Chart.yaml
+          templates/
 
     - name: build paquete helm.
       id: helm

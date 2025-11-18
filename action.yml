@@ -61,11 +61,6 @@ runs:
           echo "Contenido del Values"
           echo "-----------------------------------------"
           cat ./values.yaml
-          echo "-----------------------------------------"
-          echo "Contenido del Deploymentconfig"
-          echo "-----------------------------------------"
-           cat ./templates/deploymentconfig.yaml
-          echo "-----------------------------------------"
           if eval "$helmLint"; then
              echo "HELM Lint OK - The template folder and values file format is OK";
           else
@@ -85,4 +80,5 @@ runs:
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
           echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
+
 

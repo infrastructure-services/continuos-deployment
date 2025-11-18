@@ -138,6 +138,7 @@ runs:
       run: cp ../values.yaml values.yaml
     # Customize values.yaml with the values
     - name: Update values.yaml and chart with parameters
+      shell: bash
       run: |
         echo -e 'cluster:\n  fqdn: ${{ inputs.clusterFqdn}}' >> values.yaml
         ls

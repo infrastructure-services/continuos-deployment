@@ -147,6 +147,7 @@ runs:
         echo 'memlimit: ${{inputs.memLimit}}' >> values.yaml
         echo 'cpurequest: ${{inputs.cpuRequest}}' >> values.yaml
         echo 'memrequest: ${{inputs.memRequest}}' >> values.yaml
+        echo 'name: ${{inputs.teamProject}}-${{inputs.appName}}' >> Chart.yaml
 
     - name: show values
       shell: bash
@@ -164,7 +165,7 @@ runs:
 
     - name: build paquete helm.
       id: helm
-      uses: infrastructure-services/continuos-deployment@pack-helm-novalidation
+      uses: infrastructure-services/continuos-deployment@pack
       with:
         appName: ${{ inputs.appName }}
         teamProject: ${{ inputs.teamProject }}

@@ -216,5 +216,9 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
-
+          
+      - name: Cleanup Artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: ${{inputs.appName}}-${{inputs.namespace}}
 

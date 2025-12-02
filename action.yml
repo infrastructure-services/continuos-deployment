@@ -160,9 +160,11 @@ runs:
           done
       - name: Clear cache
         shell: bash
+        continue-on-error: true
         run: |
           #Limpia cache de argocd - hard refresh
-          argocd app get ${{ steps.name.outputs.applicationName }} refresh --hard-refresh --grpc-web 2>&1
+          argocd app get ${{ steps.name.outputs.applicationName }} --hard-refresh --grpc-web
+
           
       - name: Sync
         shell: bash

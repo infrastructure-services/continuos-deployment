@@ -171,7 +171,7 @@ runs:
         echo '  REACT_APP_ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  REACT_APP_ ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
 
     - name: Inject Azure Key Vault if exists
       shell: bash
@@ -206,6 +206,7 @@ runs:
           values.yaml
           Chart.yaml
           templates/
+
 
 
 

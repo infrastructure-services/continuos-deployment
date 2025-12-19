@@ -57,7 +57,7 @@ inputs:
   memRequest:
     description: "Request de Memoria del Pod"
     required: false
-    default: "200Mi"
+    default: "300Mi"
 
   # AZURE KEY VAULT
   AZURE_KEYVAULT_NAME:
@@ -206,6 +206,7 @@ runs:
           values.yaml
           Chart.yaml
           templates/
+
 
 
 

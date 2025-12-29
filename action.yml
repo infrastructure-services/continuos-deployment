@@ -138,6 +138,7 @@ runs:
   steps:
       - name: Check Application
         uses: infrastructure-services/continuos-integration@check-if-exists-app
+        continue-on-error: true
         with:
           gitOpsUrl: "https://github-integration.andreani.com"
         
@@ -221,5 +222,6 @@ runs:
         uses: geekyeggo/delete-artifact@v5
         with:
           name: ${{inputs.appName}}-${{inputs.namespace}}
+
 
 

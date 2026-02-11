@@ -1,6 +1,18 @@
-name: 'Helm and Deploy'
-description: 'Action to build helm manifests and Deploy with argocd'
+name: 'Deploy Selector'
+description: 'Selecciona el mejor despliegue posible según el cluster objetivo'
 inputs:
+  #Cluster de Destino
+  TARGET_CLUSTER:
+    description: "Cluster objetivo donde se despliega"
+    required: true
+  TARGET_VARIABLE:
+    description: "Variable conteniendo la data del cluster"
+    required: true
+  TARGET_SECRET:
+    description: "Secret conteniendo la data del cluster"
+    required: true
+
+
   # ACR
   ACR_USERNAME:
     description: "user de acr"
@@ -26,7 +38,7 @@ inputs:
     description: "tag para subir imagen"
     required: true
   namespace:
-    description: "nombre de namespaces"
+    description: "nombre de namespace de despliegue"
     required: false
     default: ""
   environment:
@@ -82,20 +94,7 @@ inputs:
   helmChartVersionLatest:
     description: "VersionHelm"
     required: true
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
     
-  # ArgoCD
-  ARGO_USERNAME:
-    description: "usuario de ARgocd"
-    required: true
-  ARGO_PASSWORD:
-    description: "pass de ARgocd"
-    required: true
-  ARGO_URL:
-    description: "url de ARgocd"
-    required: true
 
   # Keyvault
   AZURE_KEYVAULT_NAME:
@@ -119,12 +118,6 @@ inputs:
     required: false
     default: ""
 
-  # Observabilidad
-  APM_SERVER_URL:
-    description: "Url de APM"
-    required: false
-    default: "https://apm-mon.andreani.com"
-
 outputs:
   name_environment: 
     description: "Nombre del environment"
@@ -136,90 +129,68 @@ outputs:
 runs:
   using: "composite"
   steps:
-      - name: Check Application
-        uses: infrastructure-services/continuos-integration@check-if-exists-app
-        with:
-          gitOpsUrl: "https://github-integration.andreani.com"
+    - name: Configurar variables para despliegue
+      id: configurar_despliegue
+      run: |
+        # Extracción de variables
+        # Guardar el contenido del var en un archivo temporal
+        echo '${{ inputs.TARGET_VARIABLE }}' > var_content.txt
         
-      - name: Set Outputs
-        id: setOutputs
-        shell: bash
-        run: |
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
+        #Extraigo variables
+        FQDN=$(jq -r '.CLUSTERFQDN' var_content.txt)
+        APMURL=$(jq -r '.APM_SERVER_URL' var_content.txt)
 
-      - name: Generate helm version
-        uses: actions/github-script@v7
-        id: helmversion
-        with:
-          script: |
-            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
-            if (!helmChartVersionLatest.includes('-')) {
-                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
-            }
-            return helmChartVersionLatest
-          result-encoding: string
-          
-      - name: Generate values.yaml
-        id: value
-        uses: infrastructure-services/continuos-deployment@generate-values
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
-          fileValuesPath: ${{ inputs.fileValuesPath }}
-          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
-          helmRepoRef: ${{ inputs.helmRepoRef }}
-          helmRepo: ${{ inputs.helmRepo }}
-          cpuLimit: ${{ inputs.cpuLimit }}
-          memLimit: ${{ inputs.memLimit }}
-          cpuRequest: ${{ inputs.cpuRequest }}
-          memRequest: ${{ inputs.memRequest }}
-          AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
-          AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
-          AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
-          AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
-          AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
-          APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
-      
-      - name: build paquete helm.
-        id: helm
-        uses: infrastructure-services/continuos-deployment@pack-helm
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/continuos-deployment@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
-          
-      - name: Cleanup Artifact
-        uses: geekyeggo/delete-artifact@v5
-        with:
-          name: ${{inputs.appName}}-${{inputs.namespace}}
+        #Configuro ENV
+        echo "CLUSTERFQDN=$FQDN" >> $GITHUB_ENV
+        echo "APM_SERVER_URL=$APMURL" >> $GITHUB_ENV
+
+        # Ahora lo mismo con el secret
+        echo '${{ inputs.TARGET_SECRET }}' > secret_content.txt
+        
+        # Debug: ver el contenido del archivo
+        echo "🔍 Contenido del archivo:"
+        cat secret_content.txt
+        
+        #Extraigo variables
+        URL=$(jq -r '.ARGO_URL' secret_content.txt)
+        USR=$(jq -r '.ARGO_USER' secret_content.txt)
+        PAS=$(jq -r '.ARGO_PASS' secret_content.txt)
+
+        #Configuro ENV (Despues lo haré directo con la var y el secret de cluster)
+        echo "ARGO_URL=$URL" >> $GITHUB_ENV
+        echo "ARGO_USR=$USR" >> $GITHUB_ENV
+        echo "ARGO_PAS=$PAS" >> $GITHUB_ENV
+        
+        #Limpieza
+        rm -f secret_content.txt var_content.txt
+    - name: Deploy
+      id: deploy
+      if: ${{ inputs.TARGET_CLUSTER == 'AKSTEST' || inputs.TARGET_CLUSTER == 'AKSQA' || inputs.TARGET_CLUSTER == 'CCEPROD' || inputs.TARGET_CLUSTER == 'AROPROD' || inputs.TARGET_CLUSTER == 'AKSPRODBR' || inputs.TARGET_CLUSTER == 'AKSPRODUS' }}
+      uses: infrastructure-services/continuos-deployment@helm-and-deploy
+      with:
+        appName: ${{ vars.APPNAME }}
+        teamProject: ${{ vars.PROJECT }}
+        namespace: ${{ vars.PROJECT }}-${{ vars.SUFIJO }}
+        appVersion: ${{ inputs.appVersion }}
+        clusterFqdn: ${{ env.CLUSTERFQDN }}
+        fileValuesPath: .devops/${{ vars.ENVIRONMENT_NAME }}/value-${{ vars.SUFIJO }}.yaml
+        GITHUB_HELMREPO_TOKEN: ${{ secrets.ARQUITECTURA_DEPLOY }}
+        helmChartVersionLatest: ${{ needs.Preparativos.outputs.helmVersion }}.${{ vars.SUFIJO }}
+        ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ secrets.ACR_FULL_NAME }}
+        ACR_NAME: ${{ secrets.ACR_NAME }}
+        ARGO_USERNAME: ${{ env.ARGO_USR }}
+        ARGO_PASSWORD: ${{ env.ARGO_PAS }}
+        ARGO_URL: ${{env.ARGO_URL }}
+        environment: ${{ vars.SUFIJO }}
+        helmRepoRef: ${{ vars.FLAVOR }}
+        APM_SERVER_URL: ${{env.APM_SERVER_URL}}
+        AZURE_KEYVAULT_NAME: ${{ secrets.KV_NAME_TEST }}
+        AZURE_KEYVAULT_TENANT: ${{ secrets.KV_TENANT_TEST }}
+        AZURE_KEYVAULT_CLIENT_ID: ${{ secrets.KV_CLIENT_ID_TEST }}
+        AZURE_KEYVAULT_SECRET: ${{ secrets.KV_SECRET_TEST }}
+        AZURE_KEYVAULT_PREFIX: ${{ vars.APP_ID }}-TEST
+    - run: echo "✅ Success" 
 
 

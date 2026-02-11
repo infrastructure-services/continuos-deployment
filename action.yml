@@ -163,6 +163,7 @@ runs:
         
         #Limpieza
         rm -f secret_content.txt var_content.txt
+      shell: bash
     - name: Deploy
       id: deploy
       if: ${{ inputs.TARGET_CLUSTER == 'AKSTEST' || inputs.TARGET_CLUSTER == 'AKSQA' || inputs.TARGET_CLUSTER == 'CCEPROD' || inputs.TARGET_CLUSTER == 'AROPROD' || inputs.TARGET_CLUSTER == 'AKSPRODBR' || inputs.TARGET_CLUSTER == 'AKSPRODUS' }}

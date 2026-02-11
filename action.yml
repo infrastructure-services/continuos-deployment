@@ -192,6 +192,5 @@ runs:
         AZURE_KEYVAULT_CLIENT_ID: ${{ secrets.KV_CLIENT_ID_TEST }}
         AZURE_KEYVAULT_SECRET: ${{ secrets.KV_SECRET_TEST }}
         AZURE_KEYVAULT_PREFIX: ${{ vars.APP_ID }}-TEST
-    - run: echo "✅ Success" 
 
 

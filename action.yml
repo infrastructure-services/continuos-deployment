@@ -147,10 +147,6 @@ runs:
         # Ahora lo mismo con el secret
         echo '${{ inputs.TARGET_SECRET }}' > secret_content.txt
         
-        # Debug: ver el contenido del archivo
-        echo "🔍 Contenido del archivo:"
-        cat secret_content.txt
-        
         #Extraigo variables
         URL=$(jq -r '.ARGO_URL' secret_content.txt)
         USR=$(jq -r '.ARGO_USER' secret_content.txt)

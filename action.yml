@@ -165,28 +165,28 @@ runs:
       if: ${{ inputs.TARGET_CLUSTER == 'AKSTEST' || inputs.TARGET_CLUSTER == 'AKSQA' || inputs.TARGET_CLUSTER == 'CCEPROD' || inputs.TARGET_CLUSTER == 'AROPROD' || inputs.TARGET_CLUSTER == 'AKSPRODBR' || inputs.TARGET_CLUSTER == 'AKSPRODUS' }}
       uses: infrastructure-services/continuos-deployment@helm-and-deploy
       with:
-        appName: ${{ vars.APPNAME }}
-        teamProject: ${{ vars.PROJECT }}
-        namespace: ${{ vars.PROJECT }}-${{ vars.SUFIJO }}
+        appName: ${{ inputs.APPNAME }}
+        teamProject: ${{ inputs.PROJECT }}
+        namespace: ${{ inputs.namespace }}
         appVersion: ${{ inputs.appVersion }}
         clusterFqdn: ${{ env.CLUSTERFQDN }}
-        fileValuesPath: .devops/${{ vars.ENVIRONMENT_NAME }}/value-${{ vars.SUFIJO }}.yaml
-        GITHUB_HELMREPO_TOKEN: ${{ secrets.ARQUITECTURA_DEPLOY }}
-        helmChartVersionLatest: ${{ needs.Preparativos.outputs.helmVersion }}.${{ vars.SUFIJO }}
-        ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
-        ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
-        ACR_FULL_NAME: ${{ secrets.ACR_FULL_NAME }}
-        ACR_NAME: ${{ secrets.ACR_NAME }}
+        fileValuesPath: ${{ inputs.fileValuesPath }}
+        GITHUB_HELMREPO_TOKEN: ${{ inputs.ARQUITECTURA_DEPLOY }}
+        helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+        ACR_NAME: ${{ inputs.ACR_NAME }}
         ARGO_USERNAME: ${{ env.ARGO_USR }}
         ARGO_PASSWORD: ${{ env.ARGO_PAS }}
         ARGO_URL: ${{env.ARGO_URL }}
-        environment: ${{ vars.SUFIJO }}
-        helmRepoRef: ${{ vars.FLAVOR }}
+        environment: ${{ inputs.environment }}
+        helmRepoRef: ${{ inputs.FLAVOR }}
         APM_SERVER_URL: ${{env.APM_SERVER_URL}}
-        AZURE_KEYVAULT_NAME: ${{ secrets.KV_NAME_TEST }}
-        AZURE_KEYVAULT_TENANT: ${{ secrets.KV_TENANT_TEST }}
-        AZURE_KEYVAULT_CLIENT_ID: ${{ secrets.KV_CLIENT_ID_TEST }}
-        AZURE_KEYVAULT_SECRET: ${{ secrets.KV_SECRET_TEST }}
-        AZURE_KEYVAULT_PREFIX: ${{ vars.APP_ID }}-TEST
+        AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+        AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+        AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
+        AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
 
 

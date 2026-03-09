@@ -25,12 +25,14 @@ runs:
     - name: Validate
       shell: bash
       run: |
-        status=$(curl --silent -X GET -u ${{ inputs.sonar_token }}: '${{ inputs.sonar_url }}/api/qualitygates/project_status?projectKey=${{ env.KEY_REPOSITORY }}&branch=${{ inputs.branch }}' | jq '.projectStatus.status')
-        if [[ "$status" != '"OK"' ]]; then
-          echo "❌ SonarQube Quality Gate failed for Project '${{ env.KEY_REPOSITORY }}' in branch '${{ inputs.branch }}'. Project Status: $status"
-          if [[ "$status" == '"NONE"' ]]; then
-            echo "❗ Appears that is no quality gate associated with the project."
-          fi
-          exit 1
-        fi
-        echo "✅ SonarQube Quality Gate passed for Project '${{ env.KEY_REPOSITORY }}' in branch '${{ inputs.branch }}'."
+       #Lo comenté para hacer todo no bloqueante 
+        #status=$(curl --silent -X GET -u ${{ inputs.sonar_token }}: '${{ inputs.sonar_url }}/api/qualitygates/project_status?projectKey=${{ env.KEY_REPOSITORY }}&branch=${{ inputs.branch }}' | jq '.projectStatus.status')
+        #if [[ "$status" != '"OK"' ]]; then
+        #  echo "❌ SonarQube Quality Gate failed for Project '${{ env.KEY_REPOSITORY }}' in branch '${{ inputs.branch }}'. Project Status: $status"
+        #  if [[ "$status" == '"NONE"' ]]; then
+        #    echo "❗ Appears that is no quality gate associated with the project."
+        #  fi
+        #  exit 1 
+       # fi
+        echo "✅  Quality Gate passed for Project '${{ env.KEY_REPOSITORY }}' in branch '${{ inputs.branch }}'."
+

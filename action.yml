@@ -149,7 +149,7 @@ runs:
           echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
 
       - name: Generate helm version
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: helmversion
         with:
           script: |
@@ -218,7 +218,7 @@ runs:
           environment: ${{ inputs.environment }}
           
       - name: Cleanup Artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: ${{inputs.appName}}-${{inputs.namespace}}
 

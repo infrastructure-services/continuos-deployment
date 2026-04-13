@@ -107,9 +107,9 @@ runs:
       run: |
         echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
     - name: Clone Repository.
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Generate helm version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       id: helmversion
       with:
         script: |
@@ -126,7 +126,7 @@ runs:
           ls ../
           cp ${{ inputs.fileValuesPath }} ../values.yaml
     - name: Checkout code helm templates
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         repository: ${{ inputs.helmRepo }}
         ref: ${{ inputs.helmRepoRef }}
@@ -154,7 +154,7 @@ runs:
       run: cat values.yaml
 
     - name: Archive values yaml
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: ${{inputs.appName}}-${{inputs.namespace}}
         overwrite: true
@@ -193,5 +193,10 @@ runs:
         ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
         ARGO_URL: ${{inputs.ARGO_URL}}
         environment: ${{ inputs.environment }}
+
+    - name: Cleanup Artifact
+      uses: geekyeggo/delete-artifact@v6
+      with:
+        name: ${{inputs.appName}}-${{inputs.namespace}}
 
 

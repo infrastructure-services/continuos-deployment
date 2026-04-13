@@ -104,7 +104,7 @@ runs:
                 variableOk=1
                 break
                else
-                 echo "ArgoCD Project create $i/5"
+                 echo "ArgoCD Project create $i/2"
                  sleep 40
                fi
             done
@@ -133,7 +133,7 @@ runs:
               variableOk=1
               break
              else
-               echo "ArgoCD app create $i/5"
+               echo "ArgoCD app create $i/2"
                sleep 40
              fi
           done
@@ -155,7 +155,7 @@ runs:
                 break
             else
                 echo "ArgoCD app wait $i/2"
-                sleep 40
+                sleep 10
             fi
           done
       - name: Clear cache
@@ -178,7 +178,7 @@ runs:
               break
              else
                echo "ArgoCD sync $i/3"
-               sleep 40
+               sleep 60
              fi
           done
           if [[ $variableOk != "1" ]]
@@ -206,7 +206,7 @@ runs:
       - name: Check ArgoCD Application Status
         shell: bash
         run: |
-          MAX_ATTEMPTS=3
+          MAX_ATTEMPTS=5
           ATTEMPT=1
           APP_NAME="${{ steps.name.outputs.applicationName }}"
       

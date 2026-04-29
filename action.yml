@@ -92,10 +92,11 @@ runs:
         shell: bash
         run: |
           helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
-
           CHART_FILE="${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.helmChartVersionLatest }}.tgz"
 
-          STATUS=$(curl -s -o /tmp/helm_resp.json -w "%{http_code}" -X POST "https://${{ inputs.SWR_URL }}/helm" -u "${{ inputs.SWR_USERNAME }}:${{ inputs.SWR_PASSWORD }}" -F "chart=@${CHART_FILE}")
+          echo "Subiendo a: https://${{ inputs.SWR_URL }}/chartrepo/helm/charts"
+
+          STATUS=$(curl -s -o /tmp/helm_resp.json -w "%{http_code}" -X POST "https://${{ inputs.SWR_URL }}/chartrepo/helm/charts" -u "${{ inputs.SWR_USERNAME }}:${{ inputs.SWR_PASSWORD }}" -F "chart=@${CHART_FILE}")
 
           echo "Status: $STATUS"
           cat /tmp/helm_resp.json
@@ -103,4 +104,5 @@ runs:
           if [[ "$STATUS" != "201" && "$STATUS" != "200" ]]; then
             echo "Error al subir el Helm chart"
             exit 1
+          fi 1
           fi

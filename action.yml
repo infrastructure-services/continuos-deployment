@@ -15,6 +15,19 @@ inputs:
     description: "nombre del acr con azurecr.io"
     required: true
 
+# SWR
+  SWR_USERNAME:
+    description: "user de acr"
+    required: true
+  SWR_PASSWORD:
+    description: "password de acr"
+    required: true
+  SWR_NAME:
+    description: "nombre de la organizacion de SWR"
+    required: true
+  SWR_URL:
+    description: "url de swr"
+
   # App
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
@@ -198,6 +211,11 @@ runs:
           ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
           ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
           ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+          SWR_USERNAME : ${{ inputs.SWR_USERNAME }}
+          SWR_PASSWORD : ${{ inputs.SWR_PASSWORD }}
+          SWR_NAME : ${{ inputs.SWR_NAME }}
+          SWR_URL : ${{ inputs.SWR_PASSWORD }}
+          
           
       - name: Argo deploy 🚀
         id: argo

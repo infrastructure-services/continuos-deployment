@@ -1,4 +1,5 @@
-name: 'Generic helm pack and Push to ACR'
+name: 'Generic helm pack and Push to ACR y SWR'
+description: 'Helm pack and push to acr y swr'
 inputs:
   ACR_USERNAME:
     description: "user de acr"
@@ -72,3 +73,18 @@ runs:
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
           echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
+     
+      - name: Login to Huawei SWR
+        if: ${{ inputs.andreani }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.SWR_URL }}
+          username: ${{ inputs.SWR_USERNAME }}
+          password: ${{ inputs.SWR_PASSWORD }}
+      - name: Empaquetar y subir Helm chart a Huawei SWR
+        shell: bash
+        run: |
+          export HELM_EXPERIMENTAL_OCI=1
+          helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
+          echo "${{ inputs.SWR_PASSWORD }}" | helm registry login ${{ inputs.SWR_URL }} --username "${{ inputs.SWR_USERNAME }}" --password-stdin
+          helm push ${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.helmChartVersionLatest }}.tgz oci://${{ inputs.SWR_URL }}/${{ inputs.SWR_NAME }}/helm/

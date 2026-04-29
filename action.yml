@@ -27,6 +27,7 @@ inputs:
     required: true
   SWR_URL:
     description: "url de swr"
+    required: true
 
   # App
   appName:

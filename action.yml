@@ -101,4 +101,4 @@ runs:
           export HELM_EXPERIMENTAL_OCI=1
           helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
           echo "${{ inputs.SWR_PASSWORD }}" | helm registry login ${{ inputs.SWR_URL }} --username "${{ inputs.SWR_USERNAME }}" --password-stdin
-          helm push ${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.helmChartVersionLatest }}.tgz oci://${{ inputs.SWR_URL }}/${{ inputs.SWR_NAME }}/helm/
+          helm push ${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.helmChartVersionLatest }}.tgz oci://${{ inputs.SWR_URL }}/helm/

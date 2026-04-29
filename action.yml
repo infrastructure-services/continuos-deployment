@@ -26,7 +26,21 @@ inputs:
   helmChartVersionLatest:
      description: "VersionHelm"
      required: true
-  
+ 
+ #SWR
+  SWR_USERNAME:
+    description: "user de acr"
+    required: true
+  SWR_PASSWORD:
+    description: "password de acr"
+    required: true
+  SWR_NAME:
+    description: "nombre de la organizacion de SWR"
+    required: true
+  SWR_URL:
+    description: "url de swr"     
+    required: true
+    
 runs:
   using: "composite"
   steps:

@@ -215,7 +215,7 @@ runs:
           SWR_USERNAME : ${{ inputs.SWR_USERNAME }}
           SWR_PASSWORD : ${{ inputs.SWR_PASSWORD }}
           SWR_NAME : ${{ inputs.SWR_NAME }}
-          SWR_URL : ${{ inputs.SWR_PASSWORD }}
+          SWR_URL : ${{ inputs.SWR_URL }}
           
           
       - name: Argo deploy 🚀

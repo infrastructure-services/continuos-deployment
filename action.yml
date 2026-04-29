@@ -88,12 +88,6 @@ runs:
           echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
      
-      - name: Login to Huawei SWR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ inputs.SWR_URL }}
-          username: ${{ inputs.SWR_USERNAME }}
-          password: ${{ inputs.SWR_PASSWORD }}
       - name: Empaquetar y subir Helm chart a Huawei SWR
         shell: bash
         run: |

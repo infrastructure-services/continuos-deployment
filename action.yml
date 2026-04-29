@@ -89,7 +89,6 @@ runs:
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
      
       - name: Login to Huawei SWR
-        if: ${{ inputs.andreani }}
         uses: docker/login-action@v3
         with:
           registry: ${{ inputs.SWR_URL }}

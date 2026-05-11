@@ -107,6 +107,28 @@ inputs:
     required: false
     default: ""
 
+  # Kubecost / Organizational labels
+  orgCC:
+    description: "Centro de costo organizacional (ORG-CC)"
+    required: false
+    default: ""
+  orgL2:
+    description: "Nivel 2 organizacional (ORG-L2)"
+    required: false
+    default: ""
+  orgL3:
+    description: "Nivel 3 organizacional (ORG-L3)"
+    required: false
+    default: ""
+  orgPRY:
+    description: "Proyecto organizacional (ORG-PRY)"
+    required: false
+    default: ""
+  orgENV:
+    description: "Ambiente organizacional (ORG-ENV)"
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -150,12 +172,19 @@ runs:
         echo 'memlimit: ${{inputs.memLimit}}' >> values.yaml
         echo 'cpurequest: ${{inputs.cpuRequest}}' >> values.yaml
         echo 'memrequest: ${{inputs.memRequest}}' >> values.yaml
+
+        if [[ -n "${{ inputs.orgCC }}" ]]; then echo 'orgCC: "${{inputs.orgCC}}"' >> values.yaml; fi
+        if [[ -n "${{ inputs.orgL2 }}" ]]; then echo 'orgL2: "${{inputs.orgL2}}"' >> values.yaml; fi
+        if [[ -n "${{ inputs.orgL3 }}" ]]; then echo 'orgL3: "${{inputs.orgL3}}"' >> values.yaml; fi
+        if [[ -n "${{ inputs.orgPRY }}" ]]; then echo 'orgPRY: "${{inputs.orgPRY}}"' >> values.yaml; fi
+        if [[ -n "${{ inputs.orgENV }}" ]]; then echo 'orgENV: "${{inputs.orgENV}}"' >> values.yaml; fi
+
         echo 'caCertificate: |' >> values.yaml
         echo -e "${{inputs.APPS_CA_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'certificate: |' >> values.yaml
         echo -e "${{inputs.APPS_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'key: |' >> values.yaml
-        echo -e "${{inputs.APPS_KEY_CERTIFICATE}}" |  sed 's/^/    /' >> values.yaml
+        echo -e "${{inputs.APPS_KEY_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
         echo 'name: ${{inputs.teamProject}}-${{inputs.appName}}' >> Chart.yaml
 
         # 🚀 Agregás tu sección "env_default"

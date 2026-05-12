@@ -167,6 +167,7 @@ runs:
         echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
+        echo '  Observability__ServerUrl: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml

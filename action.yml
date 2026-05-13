@@ -127,23 +127,23 @@ inputs:
 
   # Kubecost Labels
   orgCC:
-    description: "Centro de costo organizacional (ORG-CC)"
+    description: "Centro de costo organizacional (ORG_CC)"
     required: false
     default: ""
   orgL2:
-    description: "Nivel 2 organizacional (ORG-L2)"
+    description: "Nivel 2 organizacional (ORG_L2)"
     required: false
     default: ""
   orgL3:
-    description: "Nivel 3 organizacional (ORG-L3)"
+    description: "Nivel 3 organizacional (ORG-_3)"
     required: false
     default: ""
   orgPRY:
-    description: "Proyecto organizacional (ORG-PRY)"
+    description: "Proyecto organizacional (ORG_PRY)"
     required: false
     default: ""
   orgENV:
-    description: "Ambiente organizacional (ORG-ENV)"
+    description: "Ambiente organizacional (ORG_ENV)"
     required: false
     default: ""
 

@@ -27,18 +27,12 @@ inputs:
      description: "VersionHelm"
      required: true
  
- #SWR
-  SWR_USERNAME:
-    description: "user de acr"
+ #ECR
+  ECR_ID:
+    description: "user de ecr"
     required: true
-  SWR_PASSWORD:
-    description: "password de acr"
-    required: true
-  SWR_NAME:
-    description: "nombre de la organizacion de SWR"
-    required: true
-  SWR_URL:
-    description: "url de swr"     
+  ECR_PASSWORD:
+    description: "passwrd de ecr"
     required: true
     
 runs:
@@ -87,22 +81,13 @@ runs:
           helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ inputs.namespace}} .
           echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
           helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{ inputs.TeamProject}}-${{ inputs.appName}}  # :${{ env.helmChartVersionLatest}}
-     
-      - name: Empaquetar y subir Helm chart a Huawei SWR
-        shell: bash
-        run: |
-          helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
-          CHART_FILE="${{ inputs.teamProject }}-${{ inputs.appName }}-${{ inputs.helmChartVersionLatest }}.tgz"
-
-          echo "Subiendo a: https://${{ inputs.SWR_URL }}/chartrepo/helm/charts"
-
-          STATUS=$(curl -s -o /tmp/helm_resp.json -w "%{http_code}" -X POST "https://${{ inputs.SWR_URL }}/chartrepo/helm/charts" -u "${{ inputs.SWR_USERNAME }}:${{ inputs.SWR_PASSWORD }}" -F "chart=@${CHART_FILE}")
-
-          echo "Status: $STATUS"
-          cat /tmp/helm_resp.json
-
-          if [[ "$STATUS" != "201" && "$STATUS" != "200" ]]; then
-            echo "Error al subir el Helm chart"
-            exit 1
-          fi 1
-          fi
+          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
+          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
+          # Creamos el repositorio si no existe (Con la nomenclatura helm-proyecto-aplicacion)
+          # REPOSITORY_NAME="helm-${{ inputs.TeamProject }}-${{ inputs.appName }}"
+          REPOSITORY_NAME="${{ inputs.TeamProject }}-${{ inputs.appName }}"
+          aws ecr-public describe-repositories --repository-names "$REPOSITORY_NAME" --region us-east-1 || \
+          aws ecr-public create-repository --repository-name "$REPOSITORY_NAME" --region us-east-1
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+          REPOSITORY_URI=$(aws ecr-public describe-repositories --repository-names "$REPOSITORY_NAME" --region $AWS_REGION --query 'repositories[0].repositoryUri' --output text)
+          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${REPOSITORY_URI}

@@ -34,6 +34,9 @@ inputs:
   ECR_PASSWORD:
     description: "passwrd de ecr"
     required: true
+  ECR_FULLNAME:
+    description: "nombre del ecr con public.ecr.aws"
+    required: true
     
 runs:
   using: "composite"
@@ -74,20 +77,30 @@ runs:
           login-server: ${{ inputs.ACR_NAME }}.azurecr.io #ACR_FULL_NAME incluye el azurecr.io
           username: ${{ inputs.ACR_USERNAME }}
           password: ${{ inputs.ACR_PASSWORD }}
-      - name: Enpaquetar y subir helm a ACR y ECR
+      - name: Helm Package and Push to ECR Public
         shell: bash
         run: |-
-          export PATH="/usr/local/bin:$PATH"
           export HELM_EXPERIMENTAL_OCI=1
-          helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
-          echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME }} --username ${{ inputs.ACR_USERNAME }} --password-stdin
-          helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME}}/helm/
+      
+          # Configuro AWS credentials
           aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
           aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
-          REPOSITORY_NAME="${{ inputs.TeamProject }}-${{ inputs.appName }}"
+      
+          # Empaquetamos el chart (asegurate que el "name:" en Chart.yaml no duplique el repo ECR)
+          helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
+      
+          # Creamos el repo si no existe (puede ir a oci://public.ecr.aws/<namespace>)
+          REPOSITORY_NAME="${{ inputs.appName }}"
           aws ecr-public describe-repositories --repository-names "$REPOSITORY_NAME" --region us-east-1 || \
           aws ecr-public create-repository --repository-name "$REPOSITORY_NAME" --region us-east-1
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-          REPOSITORY_URI=$(aws ecr-public describe-repositories --repository-names "$REPOSITORY_NAME" --region us-east-1 --query 'repositories[0].repositoryUri' --output text)
-          # SOLO poné el repo, no el chart
-          helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${REPOSITORY_URI}
+      
+          # Login OCI compatible
+          aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
+      
+          # Debug variables (opcional)
+          echo inputs.appName: ${{inputs.appName }}
+          echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
+          echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
+      
+          # Push chart (solo al repo, sin agregar /<chart> extra al path)
+          helm push ${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}

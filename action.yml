@@ -80,27 +80,27 @@ runs:
       - name: Helm Package and Push to ECR Public
         shell: bash
         run: |-
+          export PATH="/usr/local/bin:$PATH"
           export HELM_EXPERIMENTAL_OCI=1
-      
-          # Configuro AWS credentials
+          
+          # Package el chart, deja el nombre igual para ambos registries
+          helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
+
+          # Push to ACR (tu formato actual)
+          echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME }} --username ${{ inputs.ACR_USERNAME }} --password-stdin
+          helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz oci://${{inputs.ACR_FULL_NAME}}/helm/
+
+          # Push to ECR Public (usa EXACTAMENTE el mismo repo layout)
           aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
           aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
-      
-          # Empaquetamos el chart (asegurate que el "name:" en Chart.yaml no duplique el repo ECR)
-          helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
-      
-          # Creamos el repo si no existe (puede ir a oci://public.ecr.aws/<namespace>)
-          REPOSITORY_NAME="${{ inputs.appName }}"
+
+          REPOSITORY_NAME="helm/${{ inputs.TeamProject }}-${{ inputs.appName }}"
+          # Crea el repo en ECR si no existe
           aws ecr-public describe-repositories --repository-names "$REPOSITORY_NAME" --region us-east-1 || \
           aws ecr-public create-repository --repository-name "$REPOSITORY_NAME" --region us-east-1
-      
-          # Login OCI compatible
+
+          # Login OCI
           aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
-      
-          # Debug variables (opcional)
-          echo inputs.appName: ${{inputs.appName }}
-          echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
-          echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
-      
-          # Push chart (solo al repo, sin agregar /<chart> extra al path)
-          helm push ${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}
+
+          # Push al repo ECR Public (SIN agregar chart name extra ni duplicar path)
+          helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz oci://${{inputs.ECR_FULLNAME}}/helm/${{inputs.TeamProject}}-${{inputs.appName}}

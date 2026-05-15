@@ -82,7 +82,7 @@ runs:
         run: |-
           export PATH="/usr/local/bin:$PATH"
           export HELM_EXPERIMENTAL_OCI=1
-          
+
           # Package el chart, deja el nombre igual para ambos registries
           helm package --version ${{ inputs.helmChartVersionLatest }} --app-version ${{ inputs.appVersion }} --namespace ${{ inputs.namespace }} .
 
@@ -101,6 +101,10 @@ runs:
 
           # Login OCI
           aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
+          echo inputs.TeamProject: ${{inputs.TeamProject}}
+          echo inputs.appName: ${{inputs.appName }}
+          echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
+          echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
 
           # Push al repo ECR Public (SIN agregar chart name extra ni duplicar path)
-          helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz oci://${{inputs.ECR_FULLNAME}}/helm/${{inputs.TeamProject}}-${{inputs.appName}}
+          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}

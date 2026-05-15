@@ -107,4 +107,4 @@ runs:
           echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
 
           # Push al repo ECR Public (SIN agregar chart name extra ni duplicar path)
-          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}
+          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}/${{inputs.TeamProject}}-${{inputs.appName}}

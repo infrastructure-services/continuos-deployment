@@ -11,6 +11,13 @@ inputs:
     description: "Branch SonarQube"
     required: false
     default: "main"
+  scan_id:
+    description: "ScanId para consultar el Quality Gate en la API Sentinel"
+    required: true
+  sentinel_url:
+    description: "URL base de la API Sentinel"
+    required: false
+    default: "https://sentinel-api-gitops-test.apps.ocptest.andreani.com.ar"
 
 runs:
   using: "composite"
@@ -25,14 +32,41 @@ runs:
     - name: Validate
       shell: bash
       run: |
-       #Lo comenté para hacer todo no bloqueante 
-        #status=$(curl --silent -X GET -u ${{ inputs.sonar_token }}: '${{ inputs.sonar_url }}/api/qualitygates/project_status?projectKey=${{ env.KEY_REPOSITORY }}&branch=${{ inputs.branch }}' | jq '.projectStatus.status')
-        #if [[ "$status" != '"OK"' ]]; then
-        #  echo "❌ SonarQube Quality Gate failed for Project '${{ env.KEY_REPOSITORY }}' in branch '${{ inputs.branch }}'. Project Status: $status"
-        #  if [[ "$status" == '"NONE"' ]]; then
-        #    echo "❗ Appears that is no quality gate associated with the project."
-        #  fi
-        #  exit 1 
-       # fi
-        echo "✅  Quality Gate passed for Project '${{ env.KEY_REPOSITORY }}' in branch '${{ inputs.branch }}'."
+        SENTINEL_URL="${{ inputs.sentinel_url }}/api/v1/scans/${{ inputs.scan_id }}/validation"
+        MAX_RETRIES=3
+        RETRY_WAIT=3
+        ATTEMPT=0
 
+        while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+          ATTEMPT=$((ATTEMPT + 1))
+          echo "🔍 Consultando Sentinel API (intento $ATTEMPT/$MAX_RETRIES)..."
+
+          HTTP_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" -X GET "$SENTINEL_URL")
+
+          echo "📡 HTTP Status recibido: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Quality Gate passed para el proyecto '${{ env.KEY_REPOSITORY }}' en la rama '${{ inputs.branch }}'."
+            exit 0
+
+          elif [ "$HTTP_STATUS" -eq 409 ]; then
+            echo "❌ Quality Gate failed para el proyecto '${{ env.KEY_REPOSITORY }}' en la rama '${{ inputs.branch }}'."
+            echo "⛔ La API Sentinel respondió con 409: el análisis no superó el Quality Gate."
+            exit 1
+
+          elif [ "$HTTP_STATUS" -eq 204 ]; then
+            if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+              echo "⏳ La API Sentinel respondió con 204 (sin resultado aún). Reintentando en ${RETRY_WAIT}s..."
+              sleep $RETRY_WAIT
+            else
+              echo "❌ La API Sentinel respondió con 204 luego de $MAX_RETRIES intentos."
+              echo "⛔ El análisis del Quality Gate no está disponible. Se interrumpe el pipeline."
+              exit 1
+            fi
+
+          else
+            echo "❌ Respuesta inesperada de la API Sentinel: HTTP $HTTP_STATUS"
+            echo "⛔ Se interrumpe el pipeline por error desconocido."
+            exit 1
+          fi
+        done

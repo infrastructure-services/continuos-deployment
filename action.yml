@@ -14,6 +14,7 @@ inputs:
   scan_id:
     description: "ScanId para consultar el Quality Gate en la API Sentinel"
     required: true
+    default: 1
   sentinel_url:
     description: "URL base de la API Sentinel"
     required: false

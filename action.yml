@@ -213,27 +213,27 @@ runs:
           ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
           ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
           
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/continuos-deployment@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
+      # - name: Argo deploy 🚀
+      #   id: argo
+      #   uses: infrastructure-services/continuos-deployment@sync-argo
+      #   with:
+      #     appName: ${{ inputs.appName }}
+      #     teamProject: ${{ inputs.teamProject }}
+      #     namespace: ${{ inputs.namespace }}
+      #     appVersion: ${{ inputs.appVersion }}
+      #     helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+      #     ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+      #     ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+      #     ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+      #     ACR_NAME: ${{ inputs.ACR_NAME }}
+      #     ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
+      #     ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
+      #     ARGO_URL: ${{inputs.ARGO_URL}}
+      #     environment: ${{ inputs.environment }}
           
-      - name: Cleanup Artifact
-        uses: geekyeggo/delete-artifact@v6
-        with:
-          name: ${{inputs.appName}}-${{inputs.namespace}}
+      # - name: Cleanup Artifact
+      #   uses: geekyeggo/delete-artifact@v6
+      #   with:
+      #     name: ${{inputs.appName}}-${{inputs.namespace}}
 
 

@@ -16,13 +16,13 @@ inputs:
     required: true
 
 # ECR
-  ECR_ID:
+  ECR_ID_1:
     description: "user de ecr"
     required: true
-  ECR_PASSWORD:
+  ECR_PASSWORD_1:
     description: "passwrd de ecr"
     required: true
-  ECR_FULLNAME:
+  ECR_FULLNAME_1:
     description: "nombre del ecr con public.ecr.aws"
     required: true
     
@@ -209,9 +209,9 @@ runs:
           ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
           ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
           ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ECR_ID: ${{ inputs.ECR_ID }}
-          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
-          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
+          ECR_ID: ${{ secrets.ECR_ID }}
+          ECR_PASSWORD: ${{ secrets.ECR_PASSWORD }}
+          ECR_FULLNAME: ${{ secrets.ECR_FULLNAME }}
           
       # - name: Argo deploy 🚀
       #   id: argo

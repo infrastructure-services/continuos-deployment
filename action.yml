@@ -59,7 +59,7 @@ runs:
         shell: bash
         run: |-
           # El usuario para ECR OCI siempre debe ser 'AWS'
-          echo '${{ inputs.ECR_PASSWORD }}' | helm registry login ${{ inputs.ECR_FULLNAME }} --username AWS --password-stdin
+          aws ecr get-login-password --region us-east-1 | helm registry login ${{inputs.ECR_FULLNAME }} --username AWS --password-stdin
           echo 'login a argocd'
           variableOk=0
           argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"

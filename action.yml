@@ -230,6 +230,9 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
+          ECR_ID: ${{ inputs.ECR_ID }}
+          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
+          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
           
       - name: Cleanup Artifact
         uses: geekyeggo/delete-artifact@v6

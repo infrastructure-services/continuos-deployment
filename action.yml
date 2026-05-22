@@ -58,6 +58,7 @@ runs:
       - name: Login ArgoCD y Helm Registry
         shell: bash
         run: |-
+          export PATH="/usr/local/bin:$PATH"
           # El usuario para ECR OCI siempre debe ser 'AWS'
           aws ecr get-login-password --region us-east-1 | helm registry login ${{inputs.ECR_FULLNAME }} --username AWS --password-stdin
           echo 'login a argocd'

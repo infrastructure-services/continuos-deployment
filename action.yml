@@ -1,17 +1,14 @@
 name: 'Despliegue y Sincronizacion con ArgoCD'
 
 inputs:
-  ACR_USERNAME:
-    description: "user de acr"
+  ECR_ID:
+    description: "ID de ECR (Account ID o Identifier, si lo necesitas)"
     required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
+  ECR_PASSWORD:
+    description: "Token temporal de ECR"
     required: true
-  ACR_NAME:
-    description: "nommbre del acr"
-    required: true
-  ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
+  ECR_FULLNAME:
+    description: "URL completa del registry ECR (ej. 1234.dkr.ecr.region.amazonaws.com)"
     required: true
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
@@ -42,9 +39,7 @@ inputs:
     description: "nombre de environment"
     required: false
     default: ""
-#env:
-  #Es un valor que viene del secreto, pero el install de helm lo espera cmo variable 'plana'
-#  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
 runs:
   using: "composite"
   steps:
@@ -59,12 +54,12 @@ runs:
         with:
           name: ${{inputs.appName}}-${{inputs.namespace}}
           
-
         # Se intentan varias veces los pasos para evitar fallos si el ArgoCD no responde a tiempo
-      - name: Login ArgoCD
+      - name: Login ArgoCD y Helm Registry
         shell: bash
         run: |-
-          echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME }} --username ${{ inputs.ACR_USERNAME }} --password-stdin
+          # El usuario para ECR OCI siempre debe ser 'AWS'
+          echo '${{ inputs.ECR_PASSWORD }}' | helm registry login ${{ inputs.ECR_FULLNAME }} --username AWS --password-stdin
           echo 'login a argocd'
           variableOk=0
           argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
@@ -96,7 +91,8 @@ runs:
             variableOk=1
           else
             echo "El proyecto no existe en ArgoCD, procediendo a crearlo"
-            argoCommand="argocd proj create ${{inputs.namespace}} --upsert --dest https://kubernetes.default.svc,${{inputs.namespace}} --src  ${{ inputs.ACR_FULL_NAME }}/helm --grpc-web"
+            # Actualizado a ECR_FULLNAME
+            argoCommand="argocd proj create ${{inputs.namespace}} --upsert --dest https://kubernetes.default.svc,${{inputs.namespace}} --src  ${{ inputs.ECR_FULLNAME }}/helm --grpc-web"
             for i in {1..2}
             do
             if eval "$argoCommand"; then
@@ -119,12 +115,14 @@ runs:
               echo "Error en ArgoCD Project create" >&2;
               exit 1
           fi
+          
       - name: creación app ArgoCD
         shell: bash
         run: |
           echo 'creacion app argocd'
           variableOk=0
-          argoCommand="argocd app create ${{ steps.name.outputs.applicationName }} --repo ${{ inputs.ACR_FULL_NAME }}/helm --helm-chart ${{inputs.teamProject}}-${{inputs.appName}} --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision ${{ inputs.helmChartVersionLatest}} --dest-namespace ${{inputs.namespace}} --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project ${{inputs.namespace}} --grpc-web"
+          # Actualizado a ECR_FULLNAME
+          argoCommand="argocd app create ${{ steps.name.outputs.applicationName }} --repo ${{ inputs.ECR_FULLNAME }}/helm --helm-chart ${{inputs.teamProject}}-${{inputs.appName}} --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision ${{ inputs.helmChartVersionLatest}} --dest-namespace ${{inputs.namespace}} --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project ${{inputs.namespace}} --grpc-web"
           
           for i in {1..2}
           do
@@ -142,7 +140,8 @@ runs:
               echo "Error en ArgoCD app create" >&2;
               exit 1
           fi
-      - name: Wait Sync
+          
+      - name: Wait Sync Inicial
         shell: bash
         run: |
           #Wait. Espera la synchronizacion, esperan 40s, espera 2 veces
@@ -158,6 +157,7 @@ runs:
                 sleep 40
             fi
           done
+          
       - name: Clear cache
         shell: bash
         continue-on-error: true
@@ -165,7 +165,6 @@ runs:
           #Limpia cache de argocd - hard refresh
           argocd app get ${{ steps.name.outputs.applicationName }} --hard-refresh --grpc-web
 
-          
       - name: Sync
         shell: bash
         run: |
@@ -189,7 +188,7 @@ runs:
               exit 1
           fi
 
-      - name: Wait Sync
+      - name: Wait Sync Final
         shell: bash
         run: |
           #Wait. Espera la synchronizacion, esperan 40s, esperan 3 veces
@@ -211,22 +210,22 @@ runs:
           MAX_ATTEMPTS=3
           ATTEMPT=1
           APP_NAME="${{ steps.name.outputs.applicationName }}"
-      
+       
           while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
             echo "🔍 Intento $ATTEMPT de $MAX_ATTEMPTS para corroborar estado de $APP_NAME..."
-      
+       
             OUTPUT=$(argocd app get "$APP_NAME")
             APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
             SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
-      
+       
             echo "➡️  Estado de salud: $APP_STATUS"
             echo "➡️  Estado de sincronización: $SYNC_STATUS"
-      
+       
             if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
               echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
               exit 0
             fi
-      
+       
             if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
               echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."
               sleep 60
@@ -239,5 +238,3 @@ runs:
             echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
           fi
           exit 1
-
-

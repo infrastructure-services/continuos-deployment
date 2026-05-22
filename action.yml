@@ -215,7 +215,7 @@ runs:
           
       - name: Argo deploy 🚀
         id: argo
-        uses: infrastructure-services/continuos-deployment@sync-argo
+        uses: infrastructure-services/continuos-deployment@sync-argo-ecr
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

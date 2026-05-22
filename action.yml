@@ -60,6 +60,8 @@ runs:
         run: |-
           export PATH="/usr/local/bin:$PATH"
           # El usuario para ECR OCI siempre debe ser 'AWS'
+          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
+          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
           aws ecr get-login-password --region us-east-1 | helm registry login ${{inputs.ECR_FULLNAME }} --username AWS --password-stdin
           echo 'login a argocd'
           variableOk=0

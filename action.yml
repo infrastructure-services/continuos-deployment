@@ -82,7 +82,22 @@ runs:
               echo "Error en ArgoCD Login" >&2;
               exit 1
           fi
-
+      - name: Inyectar Secreto de ECR en AKS para ArgoCD
+        shell: bash
+        run: |
+          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
+          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
+          TOKEN=$(aws ecr get-login-password --region us-east-1)
+          
+          kubectl create secret generic ecr-helm-repo \
+            --namespace=argocd \
+            --type=Opaque \
+            --from-literal=type=helm \
+            --from-literal=enableOCI="true" \
+            --from-literal=url=${{ inputs.ECR_FULLNAME }} \
+            --from-literal=username=AWS \
+            --from-literal=password="$TOKEN" \
+            --dry-run=client -o yaml | kubectl replace --force -f -
       - name: Create Project
         shell: bash
         run: |

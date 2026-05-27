@@ -199,7 +199,7 @@ runs:
       
       - name: build paquete helm.
         id: helm
-        uses: infrastructure-services/continuos-deployment@pack-helm-test
+        uses: infrastructure-services/continuos-deployment@pack-helm-ecr
         with:
           appName: ${{ inputs.appName }}
           teamProject: ${{ inputs.teamProject }}

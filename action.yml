@@ -1,5 +1,5 @@
-name: 'Generic helm pack and Push to ACR y SWR'
-description: 'Helm pack and push to acr y swr'
+name: 'Generic helm pack and Push to ACR y ECR'
+description: 'Helm pack and push to acr y ecr'
 inputs:
   ACR_USERNAME:
     description: "user de acr"

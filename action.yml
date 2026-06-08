@@ -1,11 +1,11 @@
 name: 'Step Selector para validaciones pre-productivas'
 description: 'Unique step to Validate Status'
 inputs:
-  locking:
+  nolocking:
     description: "Bloqueante=true"
     required: false
     type: boolean
-    default: false
+    default: true
   type:
     description: "Tipo de conjunto de validaciones"
     required: false
@@ -28,18 +28,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Key Repository
-      uses: actions/github-script@v8
-      with:
-        script: |
-          const name = context.repo.repo
-          const organization = context.repo.owner
-          core.exportVariable('KEY_REPOSITORY', `${organization}_${name}`)
-    - name: Validate Quality Gates
+    - name: Validate Quality Gates Sentinel
+      continue-on-error: ${{ inputs.nolocking }}
       uses: infrastructure-services/continuos-deployment@validate-pre-prod-sentinel
       with:
-        locking:  ${{ inputs.locking }}
-        type: ${{ inputs.type }}
-        qualitygatedata: ${{ inputs.qualitygatedata }}
         scan_id: ${{ inputs.scan_id }}
         sentinel_url: ${{ inputs.sentinel_url }}

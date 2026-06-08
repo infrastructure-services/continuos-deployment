@@ -2,7 +2,7 @@ name: 'Validate PreProd With Sentinel'
 description: 'Actin to Validate Project'
 inputs:
   branch:
-    description: "Branch SonarQube"
+    description: "Branch Analysis"
     required: false
     default: "main"
   scan_id:
@@ -17,7 +17,7 @@ runs:
   using: "composite"
   steps:
     - name: Key Repository
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const name = context.repo.repo

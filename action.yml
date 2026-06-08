@@ -1,12 +1,6 @@
-name: 'Validate PreProd'
-description: 'Unique step to Validate Status Project (SonarQube)'
+name: 'Validate PreProd With Sentinel'
+description: 'Actin to Validate Project'
 inputs:
-  sonar_url:
-    description: "Url SonarQube"
-    required: true
-  sonar_token:
-    description: "Token de acceso SonarQube"
-    required: true
   branch:
     description: "Branch SonarQube"
     required: false
@@ -14,7 +8,6 @@ inputs:
   scan_id:
     description: "ScanId para consultar el Quality Gate en la API Sentinel"
     required: true
-    default: 1
   sentinel_url:
     description: "URL base de la API de Sentinel (sin trailing slash)"
     required: false

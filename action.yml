@@ -4,8 +4,7 @@ inputs:
   nolocking:
     description: "Bloqueante=true"
     required: false
-    type: boolean
-    default: true
+    default: "true"
   type:
     description: "Tipo de conjunto de validaciones"
     required: false
@@ -29,7 +28,7 @@ runs:
   using: "composite"
   steps:
     - name: Validate Quality Gates Sentinel
-      continue-on-error: ${{ inputs.nolocking }}
+      continue-on-error: ${{ inputs.nolocking == 'true' }}
       uses: infrastructure-services/continuos-deployment@validate-pre-prod-sentinel
       with:
         scan_id: ${{ inputs.scan_id }}

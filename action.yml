@@ -18,12 +18,12 @@ inputs:
 #Inputs para Sentinel
   scan_id:
     description: "ScanId para consultar el Quality Gate en la API Sentinel"
-    required: true
+    required: false
     default: 1
   sentinel_url:
     description: "URL base de la API de Sentinel (sin trailing slash)"
     required: false
-    default: "https://sentinel-api-gitops-prod.apps.andreani.com.ar"
+    default: "https://github-integration.andreani.com"
 
 runs:
   using: "composite"

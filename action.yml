@@ -77,18 +77,6 @@ inputs:
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
-    required: false
-    default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
-    required: false
-    default: ""
 
   # HELM
   helmChartVersionLatest:
@@ -188,9 +176,40 @@ runs:
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
         AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
-    - name: Deploy Aro
-      id: deployaro
-      if: ${{ inputs.TARGET_CLUSTER == 'AROPROD' }}
+    - name: Deploy Hop
+      id: deployhop
+      if: ${{ inputs.TARGET_CLUSTER == 'HOPSBX' || inputs.TARGET_CLUSTER == 'HOPPROD' }}
+      uses: infrastructure-services/continuos-deployment@hop-helm-and-deploy
+      with:
+        appName: ${{ inputs.appName }}
+        teamProject: ${{ inputs.teamProject }}
+        namespace: ${{ inputs.namespace }}
+        appVersion: ${{ inputs.appVersion }}
+        clusterFqdn: ${{ env.CLUSTERFQDN }}
+        fileValuesPath: ${{ inputs.fileValuesPath }}
+        GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
+        helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+        ACR_NAME: ${{ inputs.ACR_NAME }}
+        ARGO_USERNAME: ${{ env.ARGO_USR }}
+        ARGO_PASSWORD: ${{ env.ARGO_PAS }}
+        ARGO_URL: ${{env.ARGO_URL }}
+        environment: ${{ inputs.environment }}
+        helmRepoRef: ${{ inputs.helmRepoRef }}
+        APM_SERVER_URL: ${{env.APM_SERVER_URL}}
+        AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+        AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+        AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
+        AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
+        APPS_KEY_CERTIFICATE: ${{ inputs.APPS_KEY_CERTIFICATE }}
+        APPS_CA_CERTIFICATE: ${{ inputs.APPS_CA_CERTIFICATE }}
+        APPS_CERTIFICATE: ${{ inputs.APPS_CERTIFICATE }}
+    - name: Deploy Witwot
+      id: deployWitwot
+      if: ${{ inputs.TARGET_CLUSTER == 'WWDEV' || inputs.TARGET_CLUSTER == 'WWTEST' || inputs.TARGET_CLUSTER == 'WWPREPROD' || inputs.TARGET_CLUSTER == 'WWPROD'}}
       uses: infrastructure-services/continuos-deployment@helm-and-deploy
       with:
         appName: ${{ inputs.appName }}

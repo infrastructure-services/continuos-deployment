@@ -11,66 +11,43 @@ inputs:
   TARGET_SECRET:
     description: "Secret conteniendo la data del cluster"
     required: true
-
+  environment:
+    description: "Ambiente"
+    required: false
+    default: "test"
+  sufijo:
+    description: "sufijo de cluster"
+    required: false
+    default: "test"
 
   # ACR
-  ACR_USERNAME:
-    description: "user de acr"
+  REGISTRY_DATA:
+    description: "Secreto de datos de la registry correspondiente"
     required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
-    required: true
-  ACR_NAME:
-    description: "nommbre del acr"
-    required: true
-  ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
-    required: true
+  REGISTRY_SELECTOR:
+    description: "Tipo de registry a seleccionar"
+    required: false
+    default: "acr"
 
-  # App
-  appName:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
-    required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
+
+  # Datos de la aplicación
+  appdataJson:
+    description: "Json con el conjunto de datos de la aplicación a desplegar"
     required: true
   appVersion:
     description: "tag para subir imagen"
     required: true
-  namespace:
-    description: "nombre de namespace de despliegue"
-    required: false
-    default: ""
-  sufijo:
-    description: "sufijo de environment"
-    required: false
-    default: "test"
 
-  # Values
+
+  # Values y template de manifiestos
   helmRepo:
-    description: "Repositorio de helm"
+    description: "Repositorio de templates de manifiestos"
     required: false
     default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
+  flavor:
+    description: "Conjunto de manifiestos a utilizar"
     required: false
-    default: "standard-nocert"
-  cpuLimit:
-    description: "Limite de CPU del pod"
-    required: false
-    default: "1"
-  memLimit:
-    description: "Limite de Memoria del Pod"
-    required: false
-    default: "1Gi"
-  cpuRequest:
-    description: "Request de CPU del pod"
-    required: false
-    default: "20m"
-  memRequest:
-    description: "Request de Memoria del Pod"
-    required: false
-    default: "100Mi"
+    default: "new-standard"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
@@ -80,7 +57,7 @@ inputs:
 
   # HELM
   helmChartVersionLatest:
-    description: "VersionHelm"
+    description: "Version de chart Helm a asignar para este despliegue"
     required: true
     
 
@@ -144,7 +121,7 @@ runs:
         echo "ARGO_URL=$URL" >> $GITHUB_ENV
         echo "ARGO_USR=$USR" >> $GITHUB_ENV
         echo "ARGO_PAS=$PAS" >> $GITHUB_ENV
-        
+
         #Limpieza
         rm -f secret_content.txt var_content.txt
       shell: bash
@@ -153,29 +130,26 @@ runs:
       if: ${{ inputs.TARGET_CLUSTER == 'AKSTEST' || inputs.TARGET_CLUSTER == 'AKSQA' || inputs.TARGET_CLUSTER == 'CCEPROD' || inputs.TARGET_CLUSTER == 'AKSPRODBR' || inputs.TARGET_CLUSTER == 'AKSPRODUS' }}
       uses: infrastructure-services/continuos-deployment@deploy-andreani
       with:
-        appName: ${{ inputs.appName }}
-        teamProject: ${{ inputs.teamProject }}
-        namespace: ${{ inputs.namespace }}
+        appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
         clusterFqdn: ${{ env.CLUSTERFQDN }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
-        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-        ACR_NAME: ${{ inputs.ACR_NAME }}
+        REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}
         ARGO_USERNAME: ${{ env.ARGO_USR }}
         ARGO_PASSWORD: ${{ env.ARGO_PAS }}
         ARGO_URL: ${{env.ARGO_URL }}
-        environment: ${{ inputs.sufijo }}
-        helmRepoRef: ${{ inputs.helmRepoRef }}
+        sufijo: ${{ inputs.sufijo }}
+        flavor: ${{ inputs.flavor }}
         APM_SERVER_URL: ${{env.APM_SERVER_URL}}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
         AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
+
     - name: Deploy Hop
       id: deployhop
       if: ${{ inputs.TARGET_CLUSTER == 'HOPSBX' || inputs.TARGET_CLUSTER == 'HOPPROD' }}

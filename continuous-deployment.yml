@@ -1,0 +1,441 @@
+name: Continuous Deployment
+
+on:
+  workflow_call:
+    inputs:
+      appVersion:
+        description: 'version de aplicación'
+        required: true
+        type: string
+
+      test:
+        description: 'Test'
+        required: true
+        type: boolean
+        default: false
+
+      qa:
+        description: 'QA'
+        required: true
+        type: boolean
+        default: false
+
+      prod:
+        description: 'Production'
+        required: true
+        type: boolean
+        default: false
+
+      migrationRisk:
+        description: 'Riesgo de migración SQL'
+        required: false
+        type: string
+        default: NONE
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  EF_TOOL_VERSION: "10.0.5"
+
+jobs:
+  Preparativos:
+    name: 📕 Preparativos
+    runs-on:
+      group: Production
+
+    outputs:
+      helmVersion: ${{ steps.helmVersion.outputs.version }}
+      migrationRisk: ${{ steps.resolveMigrationRisk.outputs.migrationRisk }}
+      requiresDba: ${{ steps.resolveMigrationRisk.outputs.requiresDba }}
+      testOwnerSecret: ${{ steps.wizard_secrets.outputs['test-owner-secret'] }}
+      qaOwnerSecret: ${{ steps.wizard_secrets.outputs['qa-owner-secret'] }}
+      prodOwnerSecret: ${{ steps.wizard_secrets.outputs['prod-owner-secret'] }}
+      startupProject: ${{ steps.detect_startup.outputs['startup-project'] }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Info
+        run: echo preparativos
+
+      - name: Show GitHub ref
+        run: echo "Github refs ${{ github.ref }}"
+
+      - name: Show app version
+        run: echo "Version App ${{ inputs.appVersion }}"
+
+      - name: Show Environment to deploy
+        run: |
+          echo "test=${{ inputs.test }}"
+          echo "qa=${{ inputs.qa }}"
+          echo "prod=${{ inputs.prod }}"
+          echo "triggeredByCd=${{ inputs.triggeredByCd }}"
+          echo "migrationRisk input=${{ inputs.migrationRisk }}"
+
+      - name: Resolve migration risk
+        id: resolveMigrationRisk
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Resolviendo riesgo efectivo de migración..."
+
+          MIGRATION_RISK="${{ inputs.migrationRisk }}"
+
+          case "$MIGRATION_RISK" in
+            NONE|LOW|MEDIUM|HIGH)
+              echo "migrationRisk válido: $MIGRATION_RISK"
+              ;;
+            *)
+              echo "migrationRisk inválido: $MIGRATION_RISK"
+              echo "Valores permitidos: NONE, LOW, MEDIUM, HIGH"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$MIGRATION_RISK" == "MEDIUM" || "$MIGRATION_RISK" == "HIGH" ]]; then
+            REQUIRES_DBA="true"
+          else
+            REQUIRES_DBA="false"
+          fi
+
+          echo "migrationRisk=$MIGRATION_RISK" >> "$GITHUB_OUTPUT"
+          echo "requiresDba=$REQUIRES_DBA" >> "$GITHUB_OUTPUT"
+
+          echo "Migration Risk efectivo: $MIGRATION_RISK"
+          echo "Requires DBA: $REQUIRES_DBA"
+
+      - id: helmVersion
+        name: Resolve Helm version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          defaultVersion="${{ inputs.appVersion }}"
+          echo "version=$defaultVersion" >> "$GITHUB_OUTPUT"
+          echo "Helm version: $defaultVersion"
+
+      - name: Validate variables
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${{ vars.APPNAME }}" ]]; then
+            echo "APPNAME is empty"
+            exit 1
+          fi
+
+          if [[ -z "${{ vars.PROJECT }}" ]]; then
+            echo "PROJECT is empty"
+            exit 1
+          fi
+
+          if [[ "${{ steps.resolveMigrationRisk.outputs.migrationRisk }}" != "NONE" && -z "${{ vars.APP_ID }}" ]]; then
+            echo "APP_ID is empty and migrations are enabled"
+            exit 1
+          fi
+
+      - name: Get Wizard DB secrets
+        id: wizard_secrets
+        if: ${{ steps.resolveMigrationRisk.outputs.migrationRisk != 'NONE' }}
+        uses: infrastructure-services/actions@get-wizard-db-secrets
+        with:
+          app-id: ${{ vars.APP_ID }}
+          wizard-api-token: ${{ secrets.TOKEN_GITOPS }}
+
+      - name: Mostrar nombres de secrets encontrados
+        if: ${{ steps.resolveMigrationRisk.outputs.migrationRisk != 'NONE' }}
+        shell: bash
+        run: |
+          echo "TEST: ${{ steps.wizard_secrets.outputs['test-owner-secret'] }}"
+          echo "QA: ${{ steps.wizard_secrets.outputs['qa-owner-secret'] }}"
+          echo "PROD: ${{ steps.wizard_secrets.outputs['prod-owner-secret'] }}"
+
+      - name: Detect startup project from Dockerfile
+        id: detect_startup
+        if: ${{ steps.resolveMigrationRisk.outputs.migrationRisk != 'NONE' }}
+        uses: infrastructure-services/actions@detect-dotnet-startup-project
+        with:
+          dockerfile: Dockerfile
+
+      - name: Validate migration metadata
+        if: ${{ steps.resolveMigrationRisk.outputs.migrationRisk != 'NONE' }}
+        shell: bash
+        env:
+          TEST_SELECTED: ${{ inputs.test }}
+          QA_SELECTED: ${{ inputs.qa }}
+          PROD_SELECTED: ${{ inputs.prod }}
+          TEST_OWNER_SECRET: ${{ steps.wizard_secrets.outputs['test-owner-secret'] }}
+          QA_OWNER_SECRET: ${{ steps.wizard_secrets.outputs['qa-owner-secret'] }}
+          PROD_OWNER_SECRET: ${{ steps.wizard_secrets.outputs['prod-owner-secret'] }}
+          STARTUP_PROJECT: ${{ steps.detect_startup.outputs['startup-project'] }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${STARTUP_PROJECT:-}" ]]; then
+            echo "❌ No se pudo detectar startup-project desde Dockerfile"
+            exit 1
+          fi
+
+          if [[ ! -f "$STARTUP_PROJECT" ]]; then
+            echo "❌ El startup-project detectado no existe: $STARTUP_PROJECT"
+            exit 1
+          fi
+
+          if [[ "$TEST_SELECTED" == "true" && -z "${TEST_OWNER_SECRET:-}" ]]; then
+            echo "❌ TEST fue seleccionado pero no se encontró testOwnerSecret"
+            exit 1
+          fi
+
+          if [[ "$QA_SELECTED" == "true" && -z "${QA_OWNER_SECRET:-}" ]]; then
+            echo "❌ QA fue seleccionado pero no se encontró qaOwnerSecret"
+            exit 1
+          fi
+
+          if [[ "$PROD_SELECTED" == "true" && -z "${PROD_OWNER_SECRET:-}" ]]; then
+            echo "❌ PROD fue seleccionado pero no se encontró prodOwnerSecret"
+            exit 1
+          fi
+
+          echo "✅ Metadata de migraciones válida"
+          echo "Startup project: $STARTUP_PROJECT"
+
+      - name: Success
+        run: echo "✅ Success"
+
+  Deploy_to_test:
+    name: 🚀 Deploy Test
+    environment:
+      name: Test
+    needs:
+      - Preparativos
+    runs-on:
+      group: Test
+    if: ${{ !cancelled() && needs.Preparativos.result == 'success' && inputs.test }}
+
+    steps:
+      - name: Checkout
+        if: ${{ needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: actions/checkout@v6
+
+      - name: Aplicar migraciones DB TEST
+        id: apply_migrations_test
+        if: ${{ needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: infrastructure-services/actions@apply-db-migrations
+        with:
+          migration-risk: ${{ needs.Preparativos.outputs.migrationRisk }}
+          keyvault-name: ${{ secrets.KV_NAME_TEST }}
+          client-id: ${{ secrets.KV_CLIENT_ID_TEST }}
+          client-secret: ${{ secrets.KV_SECRET_TEST }}
+          tenant-id: ${{ secrets.KV_TENANT_TEST }}
+          secret-name: ${{ needs.Preparativos.outputs.testOwnerSecret }}
+          startup-project: ${{ needs.Preparativos.outputs.startupProject }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          ef-tool-version: ${{ env.EF_TOOL_VERSION }}
+          environment-name: ${{ vars.ENVIRONMENT_NAME }}
+          nuget-username: ${{ secrets.ARQUITECTURA_USER }}
+          nuget-token: ${{ secrets.ARQUITECTURA_DEPLOY }}
+
+      - name: Publicar SQL aplicado TEST
+        if: ${{ always() && needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ef-migrations-applied-test
+          path: artifacts/ef-migrations-apply/TEST/**
+          if-no-files-found: warn
+          include-hidden-files: true
+
+      - name: Skip migration test
+        if: ${{ needs.Preparativos.outputs.migrationRisk == 'NONE' }}
+        run: |
+          echo "No hay migraciones para ejecutar en Test."
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+
+      - name: Dummy deploy test
+        run: |
+          echo "Simulando deploy test..."
+          echo "App version: ${{ inputs.appVersion }}"
+          echo "Helm version: ${{ needs.Preparativos.outputs.helmVersion }}"
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+          echo "Deploy test OK"
+
+      - name: Success
+        run: echo "✅ Success"
+
+  Deploy_to_qa:
+    name: 🚀 Deploy QA
+    environment:
+      name: QA
+    needs:
+      - Preparativos
+      - Deploy_to_test
+    runs-on:
+      group: QA
+    if: |
+      ${{
+        always() &&
+        !cancelled() &&
+        inputs.qa &&
+        needs.Preparativos.result == 'success' &&
+        (
+          !inputs.test ||
+          needs.Deploy_to_test.result == 'success'
+        )
+      }}
+
+    steps:
+      - name: Checkout
+        if: ${{ needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: actions/checkout@v6
+
+      - name: Aplicar migraciones DB QA
+        id: apply_migrations_qa
+        if: ${{ needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: infrastructure-services/actions@apply-db-migrations
+        with:
+          migration-risk: ${{ needs.Preparativos.outputs.migrationRisk }}
+          keyvault-name: ${{ secrets.KV_NAME_QA }}
+          client-id: ${{ secrets.KV_CLIENT_ID_QA }}
+          client-secret: ${{ secrets.KV_SECRET_QA }}
+          tenant-id: ${{ secrets.KV_TENANT_QA }}
+          secret-name: ${{ needs.Preparativos.outputs.qaOwnerSecret }}
+          startup-project: ${{ needs.Preparativos.outputs.startupProject }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          ef-tool-version: ${{ env.EF_TOOL_VERSION }}
+          environment-name: ${{ vars.ENVIRONMENT_NAME }}
+          nuget-username: ${{ secrets.ARQUITECTURA_USER }}
+          nuget-token: ${{ secrets.ARQUITECTURA_DEPLOY }}
+
+      - name: Publicar SQL aplicado QA
+        if: ${{ always() && needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ef-migrations-applied-qa
+          path: artifacts/ef-migrations-apply/QA/**
+          if-no-files-found: warn
+          include-hidden-files: true
+
+      - name: Skip migration qa
+        if: ${{ needs.Preparativos.outputs.migrationRisk == 'NONE' }}
+        run: |
+          echo "No hay migraciones para ejecutar en QA."
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+
+      - name: Dummy deploy qa
+        run: |
+          echo "Simulando deploy qa..."
+          echo "App version: ${{ inputs.appVersion }}"
+          echo "Helm version: ${{ needs.Preparativos.outputs.helmVersion }}"
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+          echo "Deploy QA OK"
+
+      - name: Success
+        run: echo "✅ Success"
+
+  Aprove_dbs:
+    name: 🚀 Aprobacion DBA
+    environment:
+      name: db-requires-dba
+    needs:
+      - Preparativos
+      - Deploy_to_qa
+    runs-on:
+      group: Production
+    if: |
+      ${{
+        always() &&
+        !cancelled() &&
+        inputs.prod &&
+        needs.Preparativos.result == 'success' &&
+        needs.Preparativos.outputs.requiresDba == 'true' &&
+        (
+          !inputs.qa ||
+          needs.Deploy_to_qa.result == 'success'
+        )
+      }}
+
+    steps:
+      - name: Aprobacion DBA
+        run: |
+          echo "Requiere aprobación DBA porque el riesgo de migración es MEDIUM o HIGH."
+          echo "App version: ${{ inputs.appVersion }}"
+          echo "Helm version: ${{ needs.Preparativos.outputs.helmVersion }}"
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+          echo "Requires DBA: ${{ needs.Preparativos.outputs.requiresDba }}"
+          echo "Aprobación DBA OK"
+
+  Deploy_to_production:
+    name: 🚀 Deploy Prod
+    environment:
+      name: Production
+    needs:
+      - Preparativos
+      - Deploy_to_qa
+      - Aprove_dbs
+    runs-on:
+      group: Production
+    if: |
+      ${{
+        always() &&
+        !cancelled() &&
+        inputs.prod &&
+        needs.Preparativos.result == 'success' &&
+        (
+          !inputs.qa ||
+          needs.Deploy_to_qa.result == 'success'
+        ) &&
+        (
+          needs.Preparativos.outputs.requiresDba == 'false' ||
+          needs.Aprove_dbs.result == 'success'
+        )
+      }}
+
+    steps:
+      - name: Checkout
+        if: ${{ needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: actions/checkout@v6
+
+      - name: Aplicar migraciones DB PROD
+        id: apply_migrations_prod
+        if: ${{ needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: infrastructure-services/actions@apply-db-migrations
+        with:
+          migration-risk: ${{ needs.Preparativos.outputs.migrationRisk }}
+          keyvault-name: ${{ secrets.KV_NAME_PROD }}
+          client-id: ${{ secrets.KV_CLIENT_ID_PROD }}
+          client-secret: ${{ secrets.KV_SECRET_PROD }}
+          tenant-id: ${{ secrets.KV_TENANT_PROD }}
+          secret-name: ${{ needs.Preparativos.outputs.prodOwnerSecret }}
+          project: auto
+          startup-project: ${{ needs.Preparativos.outputs.startupProject }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          ef-tool-version: ${{ env.EF_TOOL_VERSION }}
+          environment-name: ${{ vars.ENVIRONMENT_NAME }}
+          nuget-username: ${{ secrets.ARQUITECTURA_USER }}
+          nuget-token: ${{ secrets.ARQUITECTURA_DEPLOY }}
+
+      - name: Publicar SQL aplicado PROD
+        if: ${{ always() && needs.Preparativos.outputs.migrationRisk != 'NONE' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ef-migrations-applied-prod
+          path: artifacts/ef-migrations-apply/PROD/**
+          if-no-files-found: warn
+          include-hidden-files: true
+
+      - name: Skip migration prod
+        if: ${{ needs.Preparativos.outputs.migrationRisk == 'NONE' }}
+        run: |
+          echo "No hay migraciones para ejecutar en Production."
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+
+      - name: Dummy deploy prod
+        run: |
+          echo "Simulando deploy prod..."
+          echo "App version: ${{ inputs.appVersion }}"
+          echo "Helm version: ${{ needs.Preparativos.outputs.helmVersion }}"
+          echo "Migration Risk: ${{ needs.Preparativos.outputs.migrationRisk }}"
+          echo "Deploy prod OK"
+
+      - name: Success
+        run: echo "✅ Success"

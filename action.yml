@@ -1,6 +1,25 @@
 name: 'Helm and Deploy'
 description: 'Action to build helm manifests and Deploy with argocd'
 inputs:
+  # App
+  appdataJson:
+    description: "Nombre de la aplicacion (dentro del proyecto)"
+    required: true
+  appVersion:
+    description: "tag para subir imagen"
+    required: true
+  namespace:
+    description: "nombre de namespaces"
+    required: false
+    default: ""
+  environment:
+    description: "nombre de environment"
+    required: false
+    default: "test"
+  fileValuesPath:
+    description: "path archivo de values.yaml"
+    required: true
+
   # ACR
   ACR_USERNAME:
     description: "user de acr"
@@ -15,70 +34,19 @@ inputs:
     description: "nombre del acr con azurecr.io"
     required: true
 
-  # App
-  appName:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
-    required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
-    required: true
-  appVersion:
-    description: "tag para subir imagen"
-    required: true
-  namespace:
-    description: "nombre de namespaces"
-    required: false
-    default: ""
-  environment:
-    description: "nombre de environment"
-    required: false
-    default: "test"
 
-  # Values
+  # HELM y Values
   helmRepo:
-    description: "Repositorio de helm"
+    description: "Repositorio de templates de manifiestos"
     required: false
     default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
+  flavor:
+    description: "Conjunto de manifiestos a utilizar"
     required: false
-    default: "standard-nocert"
-  cpuLimit:
-    description: "Limite de CPU del pod"
-    required: false
-    default: "1"
-  memLimit:
-    description: "Limite de Memoria del Pod"
-    required: false
-    default: "1Gi"
-  cpuRequest:
-    description: "Request de CPU del pod"
-    required: false
-    default: "20m"
-  memRequest:
-    description: "Request de Memoria del Pod"
-    required: false
-    default: "150Mi"
-  fileValuesPath:
-    description: "path archivo de values.yaml"
-    required: true
+    default: "new-standard"
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
-    required: false
-    default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
-    required: false
-    default: ""
-
-  # HELM
   helmChartVersionLatest:
     description: "VersionHelm"
     required: true
@@ -136,90 +104,124 @@ outputs:
 runs:
   using: "composite"
   steps:
-      - name: Check Application
-        uses: infrastructure-services/continuos-integration@check-if-exists-app
-        with:
-          gitOpsUrl: "https://github-integration.andreani.com"
-        
-      - name: Set Outputs
-        id: setOutputs
-        shell: bash
-        run: |
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
-
-      - name: Generate helm version
-        uses: actions/github-script@v8
-        id: helmversion
-        with:
-          script: |
-            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
-            if (!helmChartVersionLatest.includes('-')) {
-                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
-            }
-            return helmChartVersionLatest
-          result-encoding: string
-          
-      - name: Generate values.yaml
-        id: value
-        uses: infrastructure-services/continuos-deployment@generate-values
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
-          fileValuesPath: ${{ inputs.fileValuesPath }}
-          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
-          APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
-          APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
-          helmRepoRef: ${{ inputs.helmRepoRef }}
-          helmRepo: ${{ inputs.helmRepo }}
-          cpuLimit: ${{ inputs.cpuLimit }}
-          memLimit: ${{ inputs.memLimit }}
-          cpuRequest: ${{ inputs.cpuRequest }}
-          memRequest: ${{ inputs.memRequest }}
-          AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
-          AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
-          AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
-          AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
-          AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
-          APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
+    - name: Check Application
+      uses: infrastructure-services/continuos-integration@check-if-exists-app
+      with:
+        gitOpsUrl: "https://github-integration.andreani.com"
       
-      - name: build paquete helm.
-        id: helm
-        uses: infrastructure-services/continuos-deployment@pack-helm
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/continuos-deployment@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
-          
-      - name: Cleanup Artifact
-        uses: geekyeggo/delete-artifact@v6
-        with:
-          name: ${{inputs.appName}}-${{inputs.namespace}}
+    - name: Set Outputs
+      id: setOutputs
+      shell: bash
+      run: |
+        echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+        echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
+	
+    - name: Generate helm version
+      uses: actions/github-script@v8
+      id: helmversion
+      with:
+        script: |
+          let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
+          if (!helmChartVersionLatest.includes('-')) {
+              helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
+          }
+          return helmChartVersionLatest
+        result-encoding: string
+    - name: Configurar variables para selección de registry
+      id: configurar_registry
+      run: |
+        # Extracción de variables
+        # Guardar el contenido en un archivo temporal
+        echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt
+        
+        #Extraigo variables según estructura
+        if [[ $REGISTRY_SELECTOR == "acr" ]]; then
+          ACR_USERNAME=$(jq -r '.ACR_USERNAME' reg_content.txt)
+          ACR_PASSWORD=$(jq -r '.ACR_PASSWORD' reg_content.txt)
+          REGISTRY_PASS=$(jq -r '.REGISTRY_PASS' reg_content.txt)
+          ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
+          ACR_NAME=$(jq -r '.ACR_NAME' reg_content.txt)
+          #Configuro ENV
+          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
+          echo "REGISTRY_PASS=$REGISTRY_PASS" >> $GITHUB_ENV
+          echo "ACR_FULL_NAME=$ACR_FULL_NAME" >> $GITHUB_ENV
+          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
+        elif [[ $REGISTRY_SELECTOR == "ecr" ]]; then  
+          ECR_ID=$(jq -r '.ECR_ID' reg_content.txt)
+          ECR_PASSWORD=$(jq -r '.ECR_PASSWORD' reg_content.txt)
+          ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
+          #Configuro ENV
+          echo "ECR_ID=$ECR_ID" >> $GITHUB_ENV
+          echo "ECR_PASSWORD=$ECR_PASSWORD" >> $GITHUB_ENV
+          echo "REGISTRY_PASS=$REGISTRY_PASS" >> $GITHUB_ENV
+          echo "ECR_FULLNAME=$ECR_FULLNAME" >> $GITHUB_ENV
+        else
+          echo "error::Tipo de registry desconocido"
+          exit 1
+        fi
 
-
+        #Limpieza
+        rm -f reg_content.txt
+      shell: bash          
+    - name: Generate values.yaml
+      id: value
+      uses: infrastructure-services/continuos-deployment@generate-values
+      with:
+        appName: ${{ inputs.appName }}
+        teamProject: ${{ inputs.teamProject }}
+        namespace: ${{ inputs.namespace }}
+        clusterFqdn: ${{ inputs.clusterFqdn }}
+        fileValuesPath: ${{ inputs.fileValuesPath }}
+        GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
+        APPS_CERTIFICATE: ${{inputs.APPS_CERTIFICATE }} 
+        APPS_CA_CERTIFICATE: ${{inputs.APPS_CA_CERTIFICATE }}
+        APPS_KEY_CERTIFICATE: ${{inputs.APPS_KEY_CERTIFICATE }} 
+        helmRepoRef: ${{ inputs.helmRepoRef }}
+        helmRepo: ${{ inputs.helmRepo }}
+        cpuLimit: ${{ inputs.cpuLimit }}
+        memLimit: ${{ inputs.memLimit }}
+        cpuRequest: ${{ inputs.cpuRequest }}
+        memRequest: ${{ inputs.memRequest }}
+        AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+        AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+        AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
+        AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
+        APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
+    
+    - name: build paquete helm.
+      id: helm
+      uses: infrastructure-services/continuos-deployment@pack-helm
+      with:
+        appName: ${{ inputs.appName }}
+        teamProject: ${{ inputs.teamProject }}
+        namespace: ${{ inputs.namespace }}
+        appVersion: ${{ inputs.appVersion }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+        
+    - name: Argo deploy 🚀
+      id: argo
+      uses: infrastructure-services/continuos-deployment@sync-argo
+      with:
+        appName: ${{ inputs.appName }}
+        teamProject: ${{ inputs.teamProject }}
+        namespace: ${{ inputs.namespace }}
+        appVersion: ${{ inputs.appVersion }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
+        ACR_NAME: ${{ inputs.ACR_NAME }}
+        ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
+        ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
+        ARGO_URL: ${{inputs.ARGO_URL}}
+        environment: ${{ inputs.environment }}
+        
+    - name: Cleanup Artifact
+      uses: geekyeggo/delete-artifact@v6
+      with:
+        name: ${{inputs.appName}}-${{inputs.namespace}}

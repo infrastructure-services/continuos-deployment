@@ -35,7 +35,7 @@ inputs:
     description: "Json con el conjunto de datos de la aplicación a desplegar"
     required: true
   appVersion:
-    description: "tag para subir imagen"
+    description: "Tag de imagen a desplegar"
     required: true
 
 
@@ -132,7 +132,6 @@ runs:
       with:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
-        clusterFqdn: ${{ env.CLUSTERFQDN }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
@@ -143,7 +142,6 @@ runs:
         ARGO_URL: ${{env.ARGO_URL }}
         sufijo: ${{ inputs.sufijo }}
         flavor: ${{ inputs.flavor }}
-        APM_SERVER_URL: ${{env.APM_SERVER_URL}}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
@@ -155,62 +153,45 @@ runs:
       if: ${{ inputs.TARGET_CLUSTER == 'HOPSBX' || inputs.TARGET_CLUSTER == 'HOPPROD' }}
       uses: infrastructure-services/continuos-deployment@deploy-hop
       with:
-        appName: ${{ inputs.appName }}
-        teamProject: ${{ inputs.teamProject }}
-        namespace: ${{ inputs.namespace }}
+        appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
-        clusterFqdn: ${{ env.CLUSTERFQDN }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
-        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-        ACR_NAME: ${{ inputs.ACR_NAME }}
+        REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}
         ARGO_USERNAME: ${{ env.ARGO_USR }}
         ARGO_PASSWORD: ${{ env.ARGO_PAS }}
         ARGO_URL: ${{env.ARGO_URL }}
-        environment: ${{ inputs.environment }}
-        helmRepoRef: ${{ inputs.helmRepoRef }}
-        APM_SERVER_URL: ${{env.APM_SERVER_URL}}
+        sufijo: ${{ inputs.sufijo }}
+        flavor: ${{ inputs.flavor }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
         AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
-        APPS_KEY_CERTIFICATE: ${{ inputs.APPS_KEY_CERTIFICATE }}
-        APPS_CA_CERTIFICATE: ${{ inputs.APPS_CA_CERTIFICATE }}
-        APPS_CERTIFICATE: ${{ inputs.APPS_CERTIFICATE }}
+        
     - name: Deploy Witwot
       id: deployWitwot
       if: ${{ inputs.TARGET_CLUSTER == 'WWDEV' || inputs.TARGET_CLUSTER == 'WWTEST' || inputs.TARGET_CLUSTER == 'WWPREPROD' || inputs.TARGET_CLUSTER == 'WWPROD'}}
       uses: infrastructure-services/continuos-deployment@deploy-witwot
       with:
-        appName: ${{ inputs.appName }}
-        teamProject: ${{ inputs.teamProject }}
-        namespace: ${{ inputs.namespace }}
+        appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
-        clusterFqdn: ${{ env.CLUSTERFQDN }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
-        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-        ACR_NAME: ${{ inputs.ACR_NAME }}
+        REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}
         ARGO_USERNAME: ${{ env.ARGO_USR }}
         ARGO_PASSWORD: ${{ env.ARGO_PAS }}
         ARGO_URL: ${{env.ARGO_URL }}
-        environment: ${{ inputs.environment }}
-        helmRepoRef: ${{ inputs.helmRepoRef }}
-        APM_SERVER_URL: ${{env.APM_SERVER_URL}}
+        sufijo: ${{ inputs.sufijo }}
+        flavor: ${{ inputs.flavor }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
         AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
-        APPS_KEY_CERTIFICATE: ${{ inputs.APPS_KEY_CERTIFICATE }}
-        APPS_CA_CERTIFICATE: ${{ inputs.APPS_CA_CERTIFICATE }}
-        APPS_CERTIFICATE: ${{ inputs.APPS_CERTIFICATE }}
 
 

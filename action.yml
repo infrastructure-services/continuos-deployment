@@ -140,6 +140,7 @@ runs:
         ARGO_USERNAME: ${{ env.ARGO_USR }}
         ARGO_PASSWORD: ${{ env.ARGO_PAS }}
         ARGO_URL: ${{env.ARGO_URL }}
+        environment: ${{ inputs.environment }}
         sufijo: ${{ inputs.sufijo }}
         flavor: ${{ inputs.flavor }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
@@ -170,7 +171,7 @@ runs:
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
         AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
-        
+
     - name: Deploy Witwot
       id: deployWitwot
       if: ${{ inputs.TARGET_CLUSTER == 'WWDEV' || inputs.TARGET_CLUSTER == 'WWTEST' || inputs.TARGET_CLUSTER == 'WWPREPROD' || inputs.TARGET_CLUSTER == 'WWPROD'}}

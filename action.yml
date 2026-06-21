@@ -61,7 +61,7 @@ inputs:
     required: true
     
 
-  # Keyvault
+  # Keyvault Optional
   AZURE_KEYVAULT_NAME:
     description: "Nombre del keyvault"
     required: false
@@ -132,6 +132,7 @@ runs:
       with:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
+        clusterFqdn: ${{ env.CLUSTERFQDN }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
@@ -143,6 +144,7 @@ runs:
         environment: ${{ inputs.environment }}
         sufijo: ${{ inputs.sufijo }}
         flavor: ${{ inputs.flavor }}
+        APM_SERVER_URL: ${{env.APM_SERVER_URL }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}

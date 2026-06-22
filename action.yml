@@ -49,11 +49,9 @@ inputs:
   helmChartVersionLatest:
     description: "VersionHelm"
     required: true
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
+
     
-  # ArgoCD
+  # Cluster y ArgoCD
   ARGO_USERNAME:
     description: "usuario de ARgocd"
     required: true
@@ -63,6 +61,16 @@ inputs:
   ARGO_URL:
     description: "url de ARgocd"
     required: true
+  TARGET_CLUSTER:
+    description: "Cluster de Destino"
+    required: true
+  clusterFqdn:
+     description: "FQDN correspondiente a la app"
+     required: true
+  gslb:
+     description: "Si contiene configuración de GSLB"
+     required: false
+     default: "false"
 
   # Keyvault
   AZURE_KEYVAULT_NAME:
@@ -163,7 +171,7 @@ runs:
         #Limpieza
         rm -f reg_content.txt
       shell: bash    
-    - name: Generate values.yaml
+    - name: Generate customized values.yaml
       id: value
       uses: infrastructure-services/continuos-deployment@customize-values
       with:
@@ -186,19 +194,30 @@ runs:
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
 
     
-    - name: build paquete helm.
-      id: helm
-      uses: infrastructure-services/continuos-deployment@pack-helm
+    - name: Empaquetar y subir chart para ACR
+      id: helm_acr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
+      uses: infrastructure-services/continuos-deployment@push-chart
       with:
-        appName: ${{ inputs.appName }}
-        teamProject: ${{ inputs.teamProject }}
-        namespace: ${{ inputs.namespace }}
+        appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
         helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-        
+        ACR_USERNAME: ${{ env.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
+
+    - name: Empaquetar y subir chart para ECR
+      id: helm_ecr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'ecr' }}
+      uses: infrastructure-services/continuos-deployment@push-chart-ecr
+      with:
+        appdataJson: ${{ inputs.appdataJson }}
+        appVersion: ${{ inputs.appVersion }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ACR_USERNAME: ${{ env.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
+
     - name: Argo deploy 🚀
       id: argo
       uses: infrastructure-services/continuos-deployment@sync-argo

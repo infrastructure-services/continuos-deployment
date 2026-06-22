@@ -1,4 +1,4 @@
-name: 'Generic helm pack and Push to ACR'
+name: 'Helm pack and Push chart to ACR'
 inputs:
   ACR_USERNAME:
     description: "user de acr"
@@ -9,15 +9,12 @@ inputs:
   ACR_FULL_NAME:
     description: "nombre del acr con azurecr.io"
     required: true
-  appName:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
+
+  appdataJson:
+    description: "Json con los datos de la aplicación"
     required: true
-  namespace:
-    description: "nombre de namespace"
-    required: false
-    default: ""
-  teamProject:
-    description: "Nombre del proyecto/equipo"
+  sufijo:
+    description: "Identificación del cluster de destino"
     required: true
   appVersion:
     description: "tag para subir imagen"

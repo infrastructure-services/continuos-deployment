@@ -1,55 +1,63 @@
 name: 'Generate values.yaml'
-description: 'Action to generate values.yaml file from .devops values-env.yaml file and repository variables'
+description: 'Action to generate values.yaml file from .devops values-env.yaml file and application variables'
 inputs:
-
-  GITHUB_HELMREPO_TOKEN:
-    description: "Token para descargar el codigo de templates HELM"
-    required: true
-  helmRepo:
-    description: "Repositorio de helm"
-    required: false
-    default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
-    required: false
-    default: "standard"
-    
-  appName:
+  appdataJson:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-  namespace:
-    description: "nombre de namespace"
+  appVersion:
+    description: "tag para subir imagen"
+    required: true
+  environment:
+    description: "nombre de environment"
     required: false
-    default: ""
-    
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
+    default: "test"
+  sufijo:
+    description: "sufijo de cluster"
+    required: false
+    default: "test"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
-    required: true
-    
-  cpuLimit:
-    description: "Limite de CPU del pod"
-    required: false
-    default: "1"
-  memLimit:
-    description: "Limite de Memoria del Pod"
-    required: false
-    default: "1Gi"
-  cpuRequest:
-    description: "Request de CPU del pod"
-    required: false
-    default: "40m"
-  memRequest:
-    description: "Request de Memoria del Pod"
-    required: false
-    default: "300Mi"
 
-  # AZURE KEY VAULT
+  # CR
+  REGISTRY_DATA:
+    description: "Secreto de datos de la registry correspondiente"
+    required: true
+  REGISTRY_SELECTOR:
+    description: "Tipo de registry a seleccionar"
+    required: false
+    default: "acr"
+
+
+  # HELM y Values
+  helmRepo:
+    description: "Repositorio de templates de manifiestos"
+    required: false
+    default: "infrastructure-services/manifiestos-cd"
+  flavor:
+    description: "Conjunto de manifiestos a utilizar"
+    required: false
+    default: "new-standard"
+  GITHUB_HELMREPO_TOKEN:
+    description: "Token para descargar el codigo de templates HELM"
+    required: true
+  helmChartVersionLatest:
+    description: "VersionHelm"
+    required: true
+
+  # cluster
+  TARGET_CLUSTER:
+    description: "Cluster de Destino"
+    required: true
+  clusterFqdn:
+     description: "FQDN correspondiente a la app"
+     required: true
+  gslb:
+     description: "Si contiene configuración de GSLB"
+     required: false
+     default: "false"
+
+  # Keyvault
   AZURE_KEYVAULT_NAME:
     description: "Nombre del keyvault"
     required: false
@@ -71,7 +79,11 @@ inputs:
     required: false
     default: ""
 
-  #Observability Variables
+  # Observabilidad
+  APM_SERVER_URL:
+    description: "Url de APM"
+    required: false
+    default: "https://apm-mon.andreani.com"
   ELASTIC_APM_ACTIVE:
     description: "APM Activo"
     required: false
@@ -88,10 +100,6 @@ inputs:
     description: "APM Desactivado para las apps de nextJs"
     required: false
     default: "0"
-  APM_SERVER_URL:
-    description: "Url de APM"
-    required: false
-    default: "https://apm-mon.andreani.com"
   APM_SERVICE_NAME:
     description: "Service Name específico (Opcional, no se usa)"
     required: false
@@ -104,9 +112,9 @@ runs:
       shell: bash
 
     - name: Install Helm
-      uses: azure/setup-helm@v3
+      uses: azure/setup-helm@v5
       with:
-        version: v3.12.3 #Helm 13 tiene un bug (5/11/2024 Hay que chequear si todavía está)
+        version: v3.21.2       #Valor viejo 5/11/2024 v3.12.3 se usaba así por bug en versión 3.13
         
     - name: checkout codigo
       uses: actions/checkout@v6
@@ -131,22 +139,41 @@ runs:
     - name: Helm customizer le agregan valores al values
       shell: bash
       run: |-
-        echo -e 'cluster:\n  fqdn: ${{ inputs.clusterFqdn}}' >> values.yaml
-        ls
-        echo 'namespace: ${{inputs.namespace}}' >> values.yaml
-        echo 'projectName: ${{inputs.teamProject}}' >> values.yaml
-        echo 'appname: ${{inputs.appName}}' >> values.yaml
-        echo 'cpulimit: ${{inputs.cpuLimit}}' >> values.yaml
-        echo 'memlimit: ${{inputs.memLimit}}' >> values.yaml
-        echo 'cpurequest: ${{inputs.cpuRequest}}' >> values.yaml
-        echo 'memrequest: ${{inputs.memRequest}}' >> values.yaml
-        echo 'caCertificate: |' >> values.yaml
-        echo -e "${{inputs.APPS_CA_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
-        echo 'certificate: |' >> values.yaml
-        echo -e "${{inputs.APPS_CERTIFICATE}}" | sed 's/^/    /' >> values.yaml
-        echo 'key: |' >> values.yaml
-        echo -e "${{inputs.APPS_KEY_CERTIFICATE}}" |  sed 's/^/    /' >> values.yaml
-        echo 'name: ${{inputs.teamProject}}-${{inputs.appName}}' >> Chart.yaml
+        #Configuro variables para customización
+        APP_NAME=$(echo "$appdataJson" | jq -r '.appdata.appname')
+        PROJECT_NAME=$(echo "$appdataJson" | jq -r '.appdata.projectName')
+        CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
+        NAMESPACE="${PROJECT_NAME}-${{inputs.sufijo}}"
+
+        #Inserto nombre del chart a generar
+        echo 'name: ${CHART_NAME}' >> Chart.yaml
+
+        #Comienzo formación de values con los datos del cluster
+        echo "cluster:" >> values.yaml
+        echo "  name: ${{inputs.TARGET_CLUSTER}}"  >> values.yaml
+        echo "  gslb: ${{inputs.GSLB}}"  >> values.yaml
+        echo "  fqdn: ${{inputs.clusterFqdn}}"  >> values.yaml
+
+        #Customizo Json de APP
+        json_modificado=$(echo "$appdataJson" | jq --arg namespace "$NAMESPACE" '.appdata.namespace = $namespace')
+        json_modificado=$(echo "$json_modificado" | jq --arg repo "$GITHUB_REPOSITORY" '.appdata.originRepo = $repo')
+
+        #Agrego la path de la registry según a qué registry fue
+        echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt
+        if [[ ${{ inputs.REGISTRY_SELECTOR }} == "acr" ]]; then
+          ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
+          json_modificado=$(echo "$appdataJson" | jq --arg regname "$ACR_FULL_NAME" '.appdata.registry = $regname')
+        elif [[ ${{ inputs.REGISTRY_SELECTOR }}  == "ecr" ]]; then
+          ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
+          json_modificado=$(echo "$appdataJson" | jq --arg regname "$ECR_FULLNAME" '.appdata.registry = $regname')
+        else
+          echo "error::Tipo de registry desconocido"
+          exit 1
+        fi
+
+        echo "$json_modificado" | yq -P '. >> values.yaml
+
+        
 
         # 🚀 Agregás tu sección "env_default"
         echo 'env_default:' >> values.yaml
@@ -155,14 +182,23 @@ runs:
         echo '  REACT_APP_DISABLE_APM: ${{ inputs.REACT_APP_DISABLE_APM }}' >> values.yaml
         echo '  NEXT_PUBLIC_DISABLE_APM: ${{ inputs.NEXT_PUBLIC_DISABLE_APM }}' >> values.yaml
         echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  ELASTIC_APM_SERVICE_NAME: ${NAMESPACE}_${APP_NAME}' >> values.yaml
         echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  Observability__ServerUrl: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  Observability__ServiceName: ${NAMESPACE}_${APP_NAME}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${NAMESPACE}_${APP_NAME}' >> values.yaml
+        if [[ ${{inputs.environment}} == "test" ]]; then
+          echo '  Observability__Environment: Test'  >> values.yaml
+        elif [[ ${{inputs.environment}} == "qa" ]]; then
+          echo '  Observability__Environment: QA'  >> values.yaml
+        elif [[ ${{inputs.environment}} == "preprod" ]]; then
+          echo '  Observability__Environment: Preprod'  >> values.yaml
+        else
+          echo '  Observability__Environment: Production'  >> values.yaml
+        fi
 
     - name: Inject Azure Key Vault if exists
       shell: bash
@@ -174,11 +210,11 @@ runs:
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
       if: ${{ inputs.AZURE_KEYVAULT_NAME != '' && inputs.AZURE_KEYVAULT_TENANT != '' && inputs.AZURE_KEYVAULT_CLIENT_ID != '' && inputs.AZURE_KEYVAULT_SECRET != '' }}
       run: |
-        sed -i "/replicacontroller:/i \    AzureKeyVault__Name: ${AZURE_KEYVAULT_NAME}" values.yaml
-        sed -i "/replicacontroller:/i \    AzureKeyVault__TenantId: ${AZURE_KEYVAULT_TENANT}" values.yaml
-        sed -i "/replicacontroller:/i \    AzureKeyVault__ClientId: ${AZURE_KEYVAULT_CLIENT_ID}" values.yaml
-        sed -i "/replicacontroller:/i \    AzureKeyVault__ClientSecret: ${AZURE_KEYVAULT_SECRET}" values.yaml
-        sed -i "/replicacontroller:/i \    AzureKeyVault__Prefix: ${AZURE_KEYVAULT_PREFIX}" values.yaml
+        sed -i "/scalingcontrol:/i \    AzureKeyVault__Name: ${AZURE_KEYVAULT_NAME}" values.yaml
+        sed -i "/scalingcontrol:/i \    AzureKeyVault__TenantId: ${AZURE_KEYVAULT_TENANT}" values.yaml
+        sed -i "/scalingcontrol:/i \    AzureKeyVault__ClientId: ${AZURE_KEYVAULT_CLIENT_ID}" values.yaml
+        sed -i "/scalingcontrol:/i \    AzureKeyVault__ClientSecret: ${AZURE_KEYVAULT_SECRET}" values.yaml
+        sed -i "/scalingcontrol:/i \    AzureKeyVault__Prefix: ${AZURE_KEYVAULT_PREFIX}" values.yaml
 
     - name: show values
       shell: bash

@@ -3,7 +3,7 @@ description: 'Action to build helm manifests and Deploy with argocd'
 inputs:
   # App
   appdataJson:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
+    description: "Json con los datos de la aplicación"
     required: true
   appVersion:
     description: "tag para subir imagen"

@@ -104,10 +104,12 @@ runs:
         #Extraigo variables
         FQDN=$(jq -r '.CLUSTERFQDN' var_content.txt)
         APMURL=$(jq -r '.APM_SERVER_URL' var_content.txt)
+        GSLB=$(jq -r '.GSLB' var_content.txt)
 
         #Configuro ENV
         echo "CLUSTERFQDN=$FQDN" >> $GITHUB_ENV
         echo "APM_SERVER_URL=$APMURL" >> $GITHUB_ENV
+        echo "GSLB=$GSLB" >> $GITHUB_ENV
 
         # Ahora lo mismo con el secret
         echo '${{ inputs.TARGET_SECRET }}' > secret_content.txt
@@ -133,11 +135,13 @@ runs:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
         clusterFqdn: ${{ env.CLUSTERFQDN }}
+        gslb: ${{ env.GSLB }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
         REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
         REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}
+        TARGET_CLUSTER: ${{ inputs.TARGET_CLUSTER }}
         ARGO_USERNAME: ${{ env.ARGO_USR }}
         ARGO_PASSWORD: ${{ env.ARGO_PAS }}
         ARGO_URL: ${{env.ARGO_URL }}

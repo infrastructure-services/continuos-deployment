@@ -128,7 +128,7 @@ runs:
         APP_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.appname')
         PROJECT_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.projectName')
         CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
-        NAMESPACE="${PROJECT_NAME}-${APPDATA_JSON}"
+        NAMESPACE="${PROJECT_NAME}-${INPUT_SUFIJO}"
 
         echo "environment=${INPUT_ENVIRONMENT}" >> $GITHUB_OUTPUT
         echo "url=https://${APP_NAME}-${NAMESPACE}.${INPUT_CLUSTER_FQDN}" >> $GITHUB_OUTPUT
@@ -211,6 +211,7 @@ runs:
         clusterFqdn: ${{ inputs.clusterFqdn }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
+        TARGET_CLUSTER: ${{ inputs.TARGET_CLUSTER }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
         REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
         REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}

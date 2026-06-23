@@ -1,184 +1,22 @@
-name: 'EKS Helm and Deploy'
-description: 'Action to build helm manifests and Deploy on EKS with argocd'
-inputs:
-  # ACR
-  ECR_ID:
-    description: "user de ecr"
-    required: true
-  ECR_PASSWORD:
-    description: "passwrd de ecr"
-    required: true
-  ECR_FULLNAME:
-    description: "nombre del ecr completo con id, ej public.ecr.aws/u1w1q0t2"
-    required: true
-
-  # App
-  appName:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
-    required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
-    required: true
-  appVersion:
-    description: "tag para subir imagen"
-    required: true
-  namespace:
-    description: "nombre de namespace"
-    required: false
-    default: "hop-sbx"
-  environment:
-    description: "nombre de environment"
-    required: false
-    default: "sandbox"
-
-
-
-  # Values
-  helmRepo:
-    description: "Repositorio de helm"
-    required: false
-    default: "infrastructure-services/manifiestos-cd"
-  helmRepoRef:
-    description: "Ref del repositorio de Helm"
-    required: false
-    default: "hop-test"
-  cpuLimit:
-    description: "Limite de CPU del pod"
-    required: false
-    default: "1"
-  memLimit:
-    description: "Limite de Memoria del Pod"
-    required: false
-    default: "4Gi"
-  cpuRequest:
-    description: "Request de CPU del pod"
-    required: false
-    default: "150m"
-  memRequest:
-    description: "Request de Memoria del Pod"
-    required: false
-    default: "200Mi"
-  fileValuesPath:
-    description: "path archivo de values.yaml"
-    required: true
-  GITHUB_HELMREPO_TOKEN:
-    description: "Token para descargar el codigo de templates HELM"
-    required: true
-  
-  CERTIFICATE:
-    description: "Certificado para el dominio"
-    required: false
-    default: ""
-  CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  KEY_CERTIFICATE:
-    description: "Certificado Key"
-    required: false
-    default: ""
-
-  # HELM
-  helmChartVersionLatest:
-    description: "VersionHelm"
-    required: true
-  clusterFqdn:
-     description: "FQDN para pasarle a helm"
-     required: true
-    
-  # ArgoCD
-  ARGO_USERNAME:
-    description: "usuario de ARgocd"
-    required: true
-  ARGO_PASSWORD:
-    description: "pass de ARgocd"
-    required: true
-  ARGO_URL:
-    description: "url de ARgocd"
-    required: true
-
-outputs:
-  name_environment: 
-    description: "Nombre del environment"
-    value: ${{ steps.setOutputs.outputs.environment }}
-  url_environment:
-    description: "URL del environment"
-    value: ${{ steps.setOutputs.outputs.url }}
-
-runs:
-  using: "composite"
-  steps:
-      #- name: Check Application
-      #  uses: infrastructure-services/continuos-integration@check-if-exists-app
-      #  with:
-      #    gitOpsUrl: "https://github-integration-gitops-prod.apps.andreani.com.ar"
-        
-      - name: Set Outputs
-        id: setOutputs
-        shell: bash
-        run: |
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "url=https://${{ inputs.appName }}${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
-
-      - name: Generate helm version
-        uses: actions/github-script@v7
-        id: helmversion
-        with:
-          script: |
-            let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
-            if (!helmChartVersionLatest.includes('-')) {
-                helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
-            }
-            return helmChartVersionLatest
-          result-encoding: string
-          
-      - name: Generate values.yaml
-        id: value
-        uses: infrastructure-services/continuos-deployment@hop-generate-values
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          clusterFqdn: ${{ inputs.clusterFqdn }}
-          fileValuesPath: ${{ inputs.fileValuesPath }}
-          GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
-          CERTIFICATE: ${{inputs.CERTIFICATE }} 
-          CA_CERTIFICATE: ${{inputs.CA_CERTIFICATE }}
-          KEY_CERTIFICATE: ${{inputs.KEY_CERTIFICATE }} 
-          helmRepoRef: ${{ inputs.helmRepoRef }}
-          helmRepo: ${{ inputs.helmRepo }}
-          cpuLimit: ${{ inputs.cpuLimit }}
-          memLimit: ${{ inputs.memLimit }}
-          cpuRequest: ${{ inputs.cpuRequest }}
-          memRequest: ${{ inputs.memRequest }}
-      
-      - name: build paquete helm.
-        id: helm
-        uses: infrastructure-services/continuos-deployment@hop-pack-helm
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ECR_ID: ${{ inputs.ECR_ID }}
-          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
-          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/continuos-deployment@hop-sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ECR_ID: ${{ inputs.ECR_ID }}
-          ECR_PASSWORD: ${{ inputs.ECR_PASSWORD }}
-          ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
-
+        appdataJson: ${{ inputs.appdataJson }}
+        appVersion: ${{ inputs.appVersion }}
+        clusterFqdn: ${{ env.CLUSTERFQDN }}
+        gslb: ${{ env.GSLB }}
+        fileValuesPath: ${{ inputs.fileValuesPath }}
+        GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
+        helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
+        REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}
+        TARGET_CLUSTER: ${{ inputs.TARGET_CLUSTER }}
+        ARGO_USERNAME: ${{ env.ARGO_USR }}
+        ARGO_PASSWORD: ${{ env.ARGO_PAS }}
+        ARGO_URL: ${{env.ARGO_URL }}
+        environment: ${{ inputs.environment }}
+        sufijo: ${{ inputs.sufijo }}
+        flavor: ${{ inputs.flavor }}
+        APM_SERVER_URL: ${{env.APM_SERVER_URL }}
+        AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
+        AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
+        AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
+        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
+        AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}

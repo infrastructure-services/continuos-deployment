@@ -58,7 +58,7 @@ runs:
 
     - uses: actions/download-artifact@v6
       with:
-        name: ${{inputs.appName}}-${{inputs.namespace}}
+        name: ${{env.ARTIFACT_NAME}}
 
   # Verifica chart por errores de manifiesto. 
   # La funcionalidad de este paso se puede ampliar mediante un JSON de configuración.

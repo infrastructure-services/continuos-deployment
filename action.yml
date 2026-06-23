@@ -1,4 +1,4 @@
-name: 'Generate values.yaml'
+name: 'Customize Values'
 description: 'Action to generate values.yaml file from .devops values-env.yaml file and application variables'
 inputs:
   appdataJson:
@@ -129,7 +129,7 @@ runs:
       uses: actions/checkout@v6
       with:
         repository: ${{ inputs.helmRepo }}
-        ref: ${{ inputs.helmRepoRef }}
+        ref: ${{ inputs.flavor }}
         token: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
     
     - name: Restore values.yaml
@@ -138,40 +138,53 @@ runs:
     
     - name: Helm customizer le agregan valores al values
       shell: bash
+      env:
+        APPDATA_JSON: ${{ inputs.appdataJson }}
+        REGISTRY_DATA_JSON: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR_VALUE: ${{ inputs.REGISTRY_SELECTOR }}
+        INPUT_SUFIJO: ${{ inputs.sufijo }}
+        INPUT_TARGET_CLUSTER: ${{ inputs.TARGET_CLUSTER }}
+        INPUT_GSLB: ${{ inputs.gslb }}
+        INPUT_CLUSTER_FQDN: ${{ inputs.clusterFqdn }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
       run: |-
         #Configuro variables para customización
-        APP_NAME=$(echo "$appdataJson" | jq -r '.appdata.appname')
-        PROJECT_NAME=$(echo "$appdataJson" | jq -r '.appdata.projectName')
+        APP_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.appname')
+        PROJECT_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.projectName')
         CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
-        NAMESPACE="${PROJECT_NAME}-${{inputs.sufijo}}"
+        NAMESPACE="${PROJECT_NAME}-${INPUT_SUFIJO}"
+        ARTIFACT_NAME="${APP_NAME}-${NAMESPACE}"
+        echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> "$GITHUB_ENV" 
 
         #Inserto nombre del chart a generar
-        echo 'name: ${CHART_NAME}' >> Chart.yaml
+        yq -i ".name = \"${CHART_NAME}\"" Chart.yaml
+        #o
+        #echo "name: ${CHART_NAME}" >> Chart.yaml
 
         #Comienzo formación de values con los datos del cluster
         echo "cluster:" >> values.yaml
-        echo "  name: ${{inputs.TARGET_CLUSTER}}"  >> values.yaml
-        echo "  gslb: ${{inputs.GSLB}}"  >> values.yaml
-        echo "  fqdn: ${{inputs.clusterFqdn}}"  >> values.yaml
+        echo "  name: ${INPUT_TARGET_CLUSTER}"  >> values.yaml
+        echo "  gslb: ${INPUT_GSLB}"  >> values.yaml
+        echo "  fqdn: ${INPUT_CLUSTER_FQDN}"  >> values.yaml
 
         #Customizo Json de APP
-        json_modificado=$(echo "$appdataJson" | jq --arg namespace "$NAMESPACE" '.appdata.namespace = $namespace')
+        json_modificado=$(echo "$APPDATA_JSON" | jq --arg namespace "$NAMESPACE" '.appdata.namespace = $namespace')
         json_modificado=$(echo "$json_modificado" | jq --arg repo "$GITHUB_REPOSITORY" '.appdata.originRepo = $repo')
 
         #Agrego la path de la registry según a qué registry fue
         echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt
         if [[ ${{ inputs.REGISTRY_SELECTOR }} == "acr" ]]; then
           ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
-          json_modificado=$(echo "$appdataJson" | jq --arg regname "$ACR_FULL_NAME" '.appdata.registry = $regname')
+          json_modificado=$(echo "$json_modificado" | jq --arg regname "$ACR_FULL_NAME" '.appdata.registry = $regname')
         elif [[ ${{ inputs.REGISTRY_SELECTOR }}  == "ecr" ]]; then
           ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
-          json_modificado=$(echo "$appdataJson" | jq --arg regname "$ECR_FULLNAME" '.appdata.registry = $regname')
+          json_modificado=$(echo "$json_modificado" | jq --arg regname "$ECR_FULLNAME" '.appdata.registry = $regname')
         else
           echo "error::Tipo de registry desconocido"
           exit 1
         fi
 
-        echo "$json_modificado" | yq -P '. >> values.yaml
+        echo "$json_modificado" | yq -P '.' >> values.yaml
 
         
 
@@ -227,7 +240,7 @@ runs:
     - name: Archive values yaml
       uses: actions/upload-artifact@v6
       with:
-        name: ${{inputs.appName}}-${{inputs.namespace}}
+        name: ${{ env.ARTIFACT_NAME }}
         overwrite: true
         path: |
           values.yaml

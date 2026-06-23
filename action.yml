@@ -116,12 +116,24 @@ runs:
       with:
         gitOpsUrl: "https://github-integration.andreani.com"
       
-    - name: Set Outputs
+    - name: Set Outputs and environments
       id: setOutputs
       shell: bash
       run: |
         echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
         echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
+        APP_NAME=$(echo "$appdataJson" | jq -r '.appdata.appname')
+        PROJECT_NAME=$(echo "$appdataJson" | jq -r '.appdata.projectName')
+        CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
+        NAMESPACE="${PROJECT_NAME}-${{inputs.sufijo}}"
+        echo "Obtenido nombre de app: ${APP_NAME}"
+        echo "Obtenido proyecto: ${PROJECT_NAME}"
+        echo "Obtenido chart-name: ${CHART_NAME}"
+        echo "Obtenido namespace: ${NAMESPACE}"
+        echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+        echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+        echo "NAMESPACE=$NAMESPACE" >> $GITHUB_ENV
+        echo "CHART_NAME=$CHART_NAME" >> $GITHUB_ENV
 	
     - name: Generate helm version
       uses: actions/github-script@v8
@@ -201,6 +213,7 @@ runs:
       with:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
+        sufijo: ${{ inputs.sufijo }}
         helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
         ACR_USERNAME: ${{ env.ACR_USERNAME }}
         ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
@@ -213,30 +226,54 @@ runs:
       with:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
+        sufijo: ${{ inputs.sufijo }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ECR_ID: ${{ env.ECR_ID }}
+        ECR_PASSWORD: ${{ env.ECR_PASSWORD }}
+        ECR_FULLNAME: ${{ env.ECR_FULLNAME }}
+
+    - name: Argo deploy ACR 🚀
+      id: argo_acr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
+      uses: infrastructure-services/continuos-deployment@argo-deploy-acr
+      with:
+        appName: ${{ env.APP_NAME }}
+        projectName: ${{ env.PROJECT_NAME }}
+        sufijo: ${{ inputs.sufijo }}
+        namespace: ${{ env.NAMESPACE }}
+        environment: ${{ inputs.environment }}
+        appVersion: ${{ inputs.appVersion }}
         helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
         ACR_USERNAME: ${{ env.ACR_USERNAME }}
         ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
         ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
-
-    - name: Argo deploy 🚀
-      id: argo
-      uses: infrastructure-services/continuos-deployment@sync-argo
-      with:
-        appName: ${{ inputs.appName }}
-        teamProject: ${{ inputs.teamProject }}
-        namespace: ${{ inputs.namespace }}
-        appVersion: ${{ inputs.appVersion }}
-        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-        ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-        ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-        ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-        ACR_NAME: ${{ inputs.ACR_NAME }}
+        ACR_NAME: ${{ env.ACR_NAME }}
         ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
         ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
         ARGO_URL: ${{inputs.ARGO_URL}}
+        
+
+    - name: Argo deploy ECR 🚀
+      id: argo_ecr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'ecr' }}
+      uses: infrastructure-services/continuos-deployment@sync-argo
+      with:
+        appName: ${{ env.APP_NAME }}
+        projectName: ${{ env.PROJECT_NAME }}
+        sufijo: ${{ inputs.sufijo }}
+        namespace: ${{ env.NAMESPACE }}
         environment: ${{ inputs.environment }}
+        appVersion: ${{ inputs.appVersion }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ECR_ID: ${{ env.ECR_ID }}
+        ECR_PASSWORD: ${{ env.ECR_PASSWORD }}
+        ECR_FULLNAME: ${{ env.ECR_FULLNAME }}
+        ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
+        ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
+        ARGO_URL: ${{inputs.ARGO_URL}}
+
         
     - name: Cleanup Artifact
       uses: geekyeggo/delete-artifact@v6
       with:
-        name: ${{inputs.appName}}-${{inputs.namespace}}
+        name: ${{env.CHART_NAME}}

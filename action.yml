@@ -1,5 +1,5 @@
-name: 'Helm and Deploy'
-description: 'Action to build helm manifests and Deploy with argocd'
+name: 'Deploy for Andreani'
+description: 'Action to deploy custom Helm Chart for Andreani'
 inputs:
   # App
   appdataJson:
@@ -119,22 +119,31 @@ runs:
     - name: Set Outputs and environments
       id: setOutputs
       shell: bash
-      run: |-
-        echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-        echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
-        APP_NAME=$(echo "$appdataJson" | jq -r '.appdata.appname')
-        PROJECT_NAME=$(echo "$appdataJson" | jq -r '.appdata.projectName')
+      env:
+        APPDATA_JSON: ${{ inputs.appdataJson }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_SUFIJO: ${{ inputs.sufijo }}
+        INPUT_CLUSTER_FQDN: ${{ inputs.clusterFqdn }}
+      run: |
+        APP_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.appname')
+        PROJECT_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.projectName')
         CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
-        NAMESPACE="${PROJECT_NAME}-${{inputs.sufijo}}"
+        NAMESPACE="${PROJECT_NAME}-${APPDATA_JSON}"
+
+        echo "environment=${INPUT_ENVIRONMENT}" >> $GITHUB_OUTPUT
+        echo "url=https://${APP_NAME}-${NAMESPACE}.${INPUT_CLUSTER_FQDN}" >> $GITHUB_OUTPUT
+
+
         echo "Obtenido nombre de app: ${APP_NAME}"
         echo "Obtenido proyecto: ${PROJECT_NAME}"
         echo "Obtenido chart-name: ${CHART_NAME}"
         echo "Obtenido namespace: ${NAMESPACE}"
+
         echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
         echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
         echo "NAMESPACE=$NAMESPACE" >> $GITHUB_ENV
         echo "CHART_NAME=$CHART_NAME" >> $GITHUB_ENV
-	
+        
     - name: Generate helm version
       uses: actions/github-script@v8
       id: helmversion
@@ -148,47 +157,47 @@ runs:
         result-encoding: string
     - name: Configurar variables para selección de registry
       id: configurar_registry
+      shell: bash
+      env:
+        REGISTRY_DATA_JSON: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR_VALUE: ${{ inputs.REGISTRY_SELECTOR }}
       run: |-
-        # Extracción de variables
-        # Guardar el contenido en un archivo temporal
-        echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt
-        
-        #Extraigo variables según estructura
-        if [[ ${{ inputs.REGISTRY_SELECTOR }} == "acr" ]]; then
+        printf '%s' "$REGISTRY_DATA_JSON" > reg_content.txt
+
+        if [[ "$REGISTRY_SELECTOR_VALUE" == "acr" ]]; then
           ACR_USERNAME=$(jq -r '.ACR_USERNAME' reg_content.txt)
           ACR_PASSWORD=$(jq -r '.ACR_PASSWORD' reg_content.txt)
           REGISTRY_PASS=$(jq -r '.REGISTRY_PASS' reg_content.txt)
           ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
           ACR_NAME=$(jq -r '.ACR_NAME' reg_content.txt)
-          #Configuro ENV
-          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
-          echo "REGISTRY_PASS=$REGISTRY_PASS" >> $GITHUB_ENV
-          echo "ACR_FULL_NAME=$ACR_FULL_NAME" >> $GITHUB_ENV
-          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
-        elif [[ ${{ inputs.REGISTRY_SELECTOR }}  == "ecr" ]]; then  
+
+          echo "ACR_USERNAME=$ACR_USERNAME" >> "$GITHUB_ENV"
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> "$GITHUB_ENV"
+          echo "REGISTRY_PASS=$REGISTRY_PASS" >> "$GITHUB_ENV"
+          echo "ACR_FULL_NAME=$ACR_FULL_NAME" >> "$GITHUB_ENV"
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+
+        elif [[ "$REGISTRY_SELECTOR_VALUE" == "ecr" ]]; then
           ECR_ID=$(jq -r '.ECR_ID' reg_content.txt)
           ECR_PASSWORD=$(jq -r '.ECR_PASSWORD' reg_content.txt)
           ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
-          #Configuro ENV
-          echo "ECR_ID=$ECR_ID" >> $GITHUB_ENV
-          echo "ECR_PASSWORD=$ECR_PASSWORD" >> $GITHUB_ENV
-          echo "ECR_FULLNAME=$ECR_FULLNAME" >> $GITHUB_ENV
+
+          echo "ECR_ID=$ECR_ID" >> "$GITHUB_ENV"
+          echo "ECR_PASSWORD=$ECR_PASSWORD" >> "$GITHUB_ENV"
+          echo "ECR_FULLNAME=$ECR_FULLNAME" >> "$GITHUB_ENV"
         else
-          echo "error::Tipo de registry desconocido"
+          echo "::error::Tipo de registry desconocido: $REGISTRY_SELECTOR_VALUE"
           exit 1
         fi
 
-        #Limpieza
         rm -f reg_content.txt
-      shell: bash
     - name: "Validate Version"
       if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
       uses: infrastructure-services/continuos-deployment@image-tag-check
       with:
         ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
         REGISTRY_PASS: ${{ env.REGISTRY_PASS }}
-        REGISTRY_USER: ${{ secrets.ACR_NAME }}
+        REGISTRY_USER: ${{ env.ACR_USERNAME }}
         appName: ${{ env.APP_NAME }}
         teamProject: ${{ env.PROJECT_NAME }}
         appVersion: ${{ inputs.appVersion }}
@@ -199,7 +208,7 @@ runs:
       with:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
-        clusterFqdn: ${{ env.CLUSTERFQDN }}
+        clusterFqdn: ${{ inputs.clusterFqdn }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
@@ -208,7 +217,7 @@ runs:
         environment: ${{ inputs.environment }}
         sufijo: ${{ inputs.sufijo }}
         flavor: ${{ inputs.flavor }}
-        APM_SERVER_URL: ${{env.APM_SERVER_URL }}
+        APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}

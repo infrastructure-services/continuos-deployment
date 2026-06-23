@@ -170,6 +170,8 @@ runs:
 
         #Customizo Json de APP
         json_modificado=$(echo "$APPDATA_JSON" | jq --arg namespace "$NAMESPACE" '.appdata.namespace = $namespace')
+        REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        REPO="${GITHUB_REPOSITORY_OWNER}--${REPO_NAME}"
         json_modificado=$(echo "$json_modificado" | jq --arg repo "$GITHUB_REPOSITORY" '.appdata.originRepo = $repo')
 
         #Agrego la path de la registry según a qué registry fue

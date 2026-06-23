@@ -197,7 +197,7 @@ runs:
       with:
         ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
         REGISTRY_PASS: ${{ env.REGISTRY_PASS }}
-        REGISTRY_USER: ${{ env.ACR_USERNAME }}
+        REGISTRY_USER: ${{ env.ACR_NAME }}
         appName: ${{ env.APP_NAME }}
         teamProject: ${{ env.PROJECT_NAME }}
         appVersion: ${{ inputs.appVersion }}

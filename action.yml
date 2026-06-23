@@ -119,7 +119,7 @@ runs:
     - name: Set Outputs and environments
       id: setOutputs
       shell: bash
-      run: |
+      run: |-
         echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
         echo "url=https://${{ inputs.appName }}-${{ inputs.namespace }}.${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
         APP_NAME=$(echo "$appdataJson" | jq -r '.appdata.appname')
@@ -148,7 +148,7 @@ runs:
         result-encoding: string
     - name: Configurar variables para selección de registry
       id: configurar_registry
-      run: |
+      run: |-
         # Extracción de variables
         # Guardar el contenido en un archivo temporal
         echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt

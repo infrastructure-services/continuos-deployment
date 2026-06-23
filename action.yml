@@ -1,22 +1,299 @@
+name: 'Deploy for Andreani'
+description: 'Action to deploy custom Helm Chart for Andreani'
+inputs:
+  # App
+  appdataJson:
+    description: "Json con los datos de la aplicación"
+    required: true
+  appVersion:
+    description: "tag para subir imagen"
+    required: true
+  namespace:
+    description: "nombre de namespaces"
+    required: false
+    default: ""
+  environment:
+    description: "nombre de environment"
+    required: false
+    default: "test"
+  sufijo:
+    description: "sufijo de cluster"
+    required: false
+    default: "test"
+  fileValuesPath:
+    description: "path archivo de values.yaml"
+    required: true
+
+  # CR
+  REGISTRY_DATA:
+    description: "Secreto de datos de la registry correspondiente"
+    required: true
+  REGISTRY_SELECTOR:
+    description: "Tipo de registry a seleccionar"
+    required: false
+    default: "acr"
+
+
+  # HELM y Values
+  helmRepo:
+    description: "Repositorio de templates de manifiestos"
+    required: false
+    default: "infrastructure-services/manifiestos-cd"
+  flavor:
+    description: "Conjunto de manifiestos a utilizar"
+    required: false
+    default: "new-standard"
+  GITHUB_HELMREPO_TOKEN:
+    description: "Token para descargar el codigo de templates HELM"
+    required: true
+  helmChartVersionLatest:
+    description: "VersionHelm"
+    required: true
+
+    
+  # Cluster y ArgoCD
+  ARGO_USERNAME:
+    description: "usuario de ARgocd"
+    required: true
+  ARGO_PASSWORD:
+    description: "pass de ARgocd"
+    required: true
+  ARGO_URL:
+    description: "url de ARgocd"
+    required: true
+  TARGET_CLUSTER:
+    description: "Cluster de Destino"
+    required: true
+  clusterFqdn:
+     description: "FQDN correspondiente a la app"
+     required: true
+  gslb:
+     description: "Si contiene configuración de GSLB"
+     required: false
+     default: "false"
+
+  # Keyvault
+  AZURE_KEYVAULT_NAME:
+    description: "Nombre del keyvault"
+    required: false
+    default: ""
+  AZURE_KEYVAULT_TENANT:
+    description: "Tenant del keyvault"
+    required: false
+    default: ""
+  AZURE_KEYVAULT_CLIENT_ID:
+    description: "Client ID del keyvault"
+    required: false
+    default: ""
+  AZURE_KEYVAULT_SECRET:
+    description: "Secret del keyvault"
+    required: false
+    default: ""
+  AZURE_KEYVAULT_PREFIX:
+    description: "Prefijo de las variables de la app en keyvault"
+    required: false
+    default: ""
+
+  # Observabilidad
+  APM_SERVER_URL:
+    description: "Url de APM"
+    required: false
+    default: "https://apm-mon.andreani.com"
+
+outputs:
+  name_environment: 
+    description: "Nombre del environment"
+    value: ${{ steps.setOutputs.outputs.environment }}
+  url_environment:
+    description: "URL del environment"
+    value: ${{ steps.setOutputs.outputs.url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check Application
+      uses: infrastructure-services/continuos-integration@check-if-exists-app
+      with:
+        gitOpsUrl: "https://github-integration.andreani.com"
+      
+    - name: Set Outputs and environments
+      id: setOutputs
+      shell: bash
+      env:
+        APPDATA_JSON: ${{ inputs.appdataJson }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_SUFIJO: ${{ inputs.sufijo }}
+        INPUT_CLUSTER_FQDN: ${{ inputs.clusterFqdn }}
+      run: |
+        APP_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.appname')
+        PROJECT_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.projectName')
+        CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
+        NAMESPACE="${PROJECT_NAME}-${INPUT_SUFIJO}"
+
+        echo "environment=${INPUT_ENVIRONMENT}" >> $GITHUB_OUTPUT
+        echo "url=https://${APP_NAME}-${NAMESPACE}.${INPUT_CLUSTER_FQDN}" >> $GITHUB_OUTPUT
+
+
+        echo "Obtenido nombre de app: ${APP_NAME}"
+        echo "Obtenido proyecto: ${PROJECT_NAME}"
+        echo "Obtenido chart-name: ${CHART_NAME}"
+        echo "Obtenido namespace: ${NAMESPACE}"
+
+        echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+        echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+        echo "NAMESPACE=$NAMESPACE" >> $GITHUB_ENV
+        echo "CHART_NAME=$CHART_NAME" >> $GITHUB_ENV
+        
+    - name: Generate helm version
+      uses: actions/github-script@v8
+      id: helmversion
+      with:
+        script: |
+          let helmChartVersionLatest = "${{ inputs.helmChartVersionLatest }}";
+          if (!helmChartVersionLatest.includes('-')) {
+              helmChartVersionLatest = helmChartVersionLatest.replace(/\.([^\.]*)$/, '-$1');
+          }
+          return helmChartVersionLatest
+        result-encoding: string
+    - name: Configurar variables para selección de registry
+      id: configurar_registry
+      shell: bash
+      env:
+        REGISTRY_DATA_JSON: ${{ inputs.REGISTRY_DATA }}
+        REGISTRY_SELECTOR_VALUE: ${{ inputs.REGISTRY_SELECTOR }}
+      run: |-
+        printf '%s' "$REGISTRY_DATA_JSON" > reg_content.txt
+
+        if [[ "$REGISTRY_SELECTOR_VALUE" == "acr" ]]; then
+          ACR_USERNAME=$(jq -r '.ACR_USERNAME' reg_content.txt)
+          ACR_PASSWORD=$(jq -r '.ACR_PASSWORD' reg_content.txt)
+          REGISTRY_PASS=$(jq -r '.REGISTRY_PASS' reg_content.txt)
+          ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
+          ACR_NAME=$(jq -r '.ACR_NAME' reg_content.txt)
+
+          echo "ACR_USERNAME=$ACR_USERNAME" >> "$GITHUB_ENV"
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> "$GITHUB_ENV"
+          echo "REGISTRY_PASS=$REGISTRY_PASS" >> "$GITHUB_ENV"
+          echo "ACR_FULL_NAME=$ACR_FULL_NAME" >> "$GITHUB_ENV"
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
+
+        elif [[ "$REGISTRY_SELECTOR_VALUE" == "ecr" ]]; then
+          ECR_ID=$(jq -r '.ECR_ID' reg_content.txt)
+          ECR_PASSWORD=$(jq -r '.ECR_PASSWORD' reg_content.txt)
+          ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
+
+          echo "ECR_ID=$ECR_ID" >> "$GITHUB_ENV"
+          echo "ECR_PASSWORD=$ECR_PASSWORD" >> "$GITHUB_ENV"
+          echo "ECR_FULLNAME=$ECR_FULLNAME" >> "$GITHUB_ENV"
+        else
+          echo "::error::Tipo de registry desconocido: $REGISTRY_SELECTOR_VALUE"
+          exit 1
+        fi
+
+        rm -f reg_content.txt
+    - name: "Validate Version"
+      if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
+      uses: infrastructure-services/continuos-deployment@image-tag-check
+      with:
+        ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
+        REGISTRY_PASS: ${{ env.REGISTRY_PASS }}
+        REGISTRY_USER: ${{ env.ACR_NAME }}
+        appName: ${{ env.APP_NAME }}
+        teamProject: ${{ env.PROJECT_NAME }}
+        appVersion: ${{ inputs.appVersion }}
+
+    - name: Generate customized values.yaml
+      id: value
+      uses: infrastructure-services/continuos-deployment@customize-values
+      with:
         appdataJson: ${{ inputs.appdataJson }}
         appVersion: ${{ inputs.appVersion }}
-        clusterFqdn: ${{ env.CLUSTERFQDN }}
-        gslb: ${{ env.GSLB }}
+        clusterFqdn: ${{ inputs.clusterFqdn }}
         fileValuesPath: ${{ inputs.fileValuesPath }}
         GITHUB_HELMREPO_TOKEN: ${{ inputs.GITHUB_HELMREPO_TOKEN }}
+        TARGET_CLUSTER: ${{ inputs.TARGET_CLUSTER }}
         helmChartVersionLatest: ${{ inputs.helmChartVersionLatest }}
         REGISTRY_DATA: ${{ inputs.REGISTRY_DATA }}
         REGISTRY_SELECTOR: ${{ inputs.REGISTRY_SELECTOR }}
-        TARGET_CLUSTER: ${{ inputs.TARGET_CLUSTER }}
-        ARGO_USERNAME: ${{ env.ARGO_USR }}
-        ARGO_PASSWORD: ${{ env.ARGO_PAS }}
-        ARGO_URL: ${{env.ARGO_URL }}
         environment: ${{ inputs.environment }}
         sufijo: ${{ inputs.sufijo }}
         flavor: ${{ inputs.flavor }}
-        APM_SERVER_URL: ${{env.APM_SERVER_URL }}
+        APM_SERVER_URL: ${{ inputs.APM_SERVER_URL }}
         AZURE_KEYVAULT_NAME: ${{ inputs.AZURE_KEYVAULT_NAME }}
         AZURE_KEYVAULT_TENANT: ${{ inputs.AZURE_KEYVAULT_TENANT }}
         AZURE_KEYVAULT_CLIENT_ID: ${{ inputs.AZURE_KEYVAULT_CLIENT_ID }}
-        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRE }}
+        AZURE_KEYVAULT_SECRET: ${{ inputs.AZURE_KEYVAULT_SECRET }}
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
+
+    
+    - name: Empaquetar y subir chart para ACR
+      id: helm_acr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
+      uses: infrastructure-services/continuos-deployment@push-chart
+      with:
+        appdataJson: ${{ inputs.appdataJson }}
+        appVersion: ${{ inputs.appVersion }}
+        sufijo: ${{ inputs.sufijo }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ACR_USERNAME: ${{ env.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
+
+    - name: Empaquetar y subir chart para ECR
+      id: helm_ecr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'ecr' }}
+      uses: infrastructure-services/continuos-deployment@push-chart-ecr
+      with:
+        appdataJson: ${{ inputs.appdataJson }}
+        appVersion: ${{ inputs.appVersion }}
+        sufijo: ${{ inputs.sufijo }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ECR_ID: ${{ env.ECR_ID }}
+        ECR_PASSWORD: ${{ env.ECR_PASSWORD }}
+        ECR_FULLNAME: ${{ env.ECR_FULLNAME }}
+
+    - name: Argo deploy ACR 🚀
+      id: argo_acr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
+      uses: infrastructure-services/continuos-deployment@argo-deploy-acr
+      with:
+        appName: ${{ env.APP_NAME }}
+        projectName: ${{ env.PROJECT_NAME }}
+        sufijo: ${{ inputs.sufijo }}
+        namespace: ${{ env.NAMESPACE }}
+        environment: ${{ inputs.environment }}
+        appVersion: ${{ inputs.appVersion }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ACR_USERNAME: ${{ env.ACR_USERNAME }}
+        ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+        ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
+        ACR_NAME: ${{ env.ACR_NAME }}
+        ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
+        ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
+        ARGO_URL: ${{inputs.ARGO_URL}}
+        
+
+    - name: Argo deploy ECR 🚀
+      id: argo_ecr
+      if: ${{ inputs.REGISTRY_SELECTOR == 'ecr' }}
+      uses: infrastructure-services/continuos-deployment@sync-argo
+      with:
+        appName: ${{ env.APP_NAME }}
+        projectName: ${{ env.PROJECT_NAME }}
+        sufijo: ${{ inputs.sufijo }}
+        namespace: ${{ env.NAMESPACE }}
+        environment: ${{ inputs.environment }}
+        appVersion: ${{ inputs.appVersion }}
+        helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
+        ECR_ID: ${{ env.ECR_ID }}
+        ECR_PASSWORD: ${{ env.ECR_PASSWORD }}
+        ECR_FULLNAME: ${{ env.ECR_FULLNAME }}
+        ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
+        ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
+        ARGO_URL: ${{inputs.ARGO_URL}}
+
+        
+    - name: Cleanup Artifact
+      uses: geekyeggo/delete-artifact@v6
+      with:
+        name: ${{env.CHART_NAME}}

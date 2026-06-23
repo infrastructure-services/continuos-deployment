@@ -173,7 +173,6 @@ runs:
           #Configuro ENV
           echo "ECR_ID=$ECR_ID" >> $GITHUB_ENV
           echo "ECR_PASSWORD=$ECR_PASSWORD" >> $GITHUB_ENV
-          echo "REGISTRY_PASS=$REGISTRY_PASS" >> $GITHUB_ENV
           echo "ECR_FULLNAME=$ECR_FULLNAME" >> $GITHUB_ENV
         else
           echo "error::Tipo de registry desconocido"
@@ -182,7 +181,18 @@ runs:
 
         #Limpieza
         rm -f reg_content.txt
-      shell: bash    
+      shell: bash
+    - name: "Validate Version"
+      if: ${{ inputs.REGISTRY_SELECTOR == 'acr' }}
+      uses: infrastructure-services/continuos-deployment@image-tag-check
+      with:
+        ACR_FULL_NAME: ${{ env.ACR_FULL_NAME }}
+        REGISTRY_PASS: ${{ env.REGISTRY_PASS }}
+        REGISTRY_USER: ${{ secrets.ACR_NAME }}
+        appName: ${{ env.APP_NAME }}
+        teamProject: ${{ env.PROJECT_NAME }}
+        appVersion: ${{ inputs.appVersion }}
+
     - name: Generate customized values.yaml
       id: value
       uses: infrastructure-services/continuos-deployment@customize-values

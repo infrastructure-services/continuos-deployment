@@ -33,7 +33,29 @@ runs:
       uses: azure/setup-helm@v5
       with:
         version: v3.21.2 #Anteriormente 3.12.3
-    
+    - name: Preparación de variables de configuración 
+      shell: bash
+      env:
+        APPDATA_JSON: ${{ inputs.appdataJson }}
+        INPUT_SUFIJO: ${{ inputs.sufijo }}
+      run: |-
+        APP_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.appname')
+        PROJECT_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.projectName')
+        CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
+        NAMESPACE="${PROJECT_NAME}-${INPUT_SUFIJO}"
+        ARTIFACT_NAME="${APP_NAME}-${NAMESPACE}"
+        
+        echo "Obtenido nombre de app: ${APP_NAME}"
+        echo "Obtenido proyecto: ${PROJECT_NAME}"
+        echo "Obtenido chart-name: ${CHART_NAME}"
+        echo "Obtenido namespace: ${NAMESPACE}"
+
+        echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+        echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+        echo "NAMESPACE=$NAMESPACE" >> $GITHUB_ENV
+        echo "CHART_NAME=$CHART_NAME" >> $GITHUB_ENV
+        echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> "$GITHUB_ENV"     
+
     - uses: actions/download-artifact@v6
       with:
         name: ${{inputs.appName}}-${{inputs.namespace}}
@@ -51,21 +73,6 @@ runs:
            helm lint --values=values.yaml
            exit 1
         fi
-    - name: Preparación de variables de configuración 
-      shell: bash
-      run: |-
-        APP_NAME=$(echo "$appdataJson" | jq -r '.appdata.appname')
-        PROJECT_NAME=$(echo "$appdataJson" | jq -r '.appdata.projectName')
-        CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
-        NAMESPACE="${PROJECT_NAME}-${{inputs.sufijo}}"
-        echo "Obtenido nombre de app: ${APP_NAME}"
-        echo "Obtenido proyecto: ${PROJECT_NAME}"
-        echo "Obtenido chart-name: ${CHART_NAME}"
-        echo "Obtenido namespace: ${NAMESPACE}"
-        echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
-        echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
-        echo "NAMESPACE=$NAMESPACE" >> $GITHUB_ENV
-        echo "CHART_NAME=$CHART_NAME" >> $GITHUB_ENV
     - name: Empaquetar y subir helm chart a acr
       shell: bash
       run: |-

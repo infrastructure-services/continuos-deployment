@@ -44,7 +44,7 @@ runs:
         CHART_NAME="${PROJECT_NAME}-${APP_NAME}"
         NAMESPACE="${PROJECT_NAME}-${INPUT_SUFIJO}"
         ARTIFACT_NAME="${APP_NAME}-${NAMESPACE}"
-        
+
         echo "Obtenido nombre de app: ${APP_NAME}"
         echo "Obtenido proyecto: ${PROJECT_NAME}"
         echo "Obtenido chart-name: ${CHART_NAME}"
@@ -73,17 +73,19 @@ runs:
            helm lint --values=values.yaml
            exit 1
         fi
+#
+#    - name: Login to Azure Container Registry
+#      uses: azure/docker-login@v2
+#      with:
+#        login-server: ${{ inputs.ACR_FULL_NAME }}
+#        username: ${{ inputs.ACR_USERNAME }}
+#        password: ${{ inputs.ACR_PASSWORD }}
 
-    - name: Login to Azure Container Registry
-      uses: azure/docker-login@v2
-      with:
-        login-server: ${{ inputs.ACR_FULL_NAME }}
-        username: ${{ inputs.ACR_USERNAME }}
-        password: ${{ inputs.ACR_PASSWORD }}
     - name: Empaquetar y subir helm chart a acr
       shell: bash
       run: |-
 
-        helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ env.NAMESPACE}} .
+        # Viejo comando helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ env.NAMESPACE}} .
+        helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} .
         echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
         helm push ${{env.CHART_NAME}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{env.CHART_NAME}}  # :${{ env.helmChartVersionLatest}}

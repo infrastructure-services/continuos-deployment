@@ -75,7 +75,7 @@ runs:
     - name: Empaquetar y subir helm chart a acr
       shell: bash
       run: |-
-        export HELM_EXPERIMENTAL_OCI=1 #Es necesario para el chart save}}
+
         helm package --version ${{ inputs.helmChartVersionLatest}} --app-version ${{ inputs.appVersion}} --namespace ${{ env.NAMESPACE}} .
         echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME}} --username ${{ inputs.ACR_USERNAME}} --password-stdin
         helm push ${{env.CHART_NAME}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ACR_FULL_NAME }}/helm/ # ${{env.CHART_NAME}}  # :${{ env.helmChartVersionLatest}}

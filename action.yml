@@ -108,7 +108,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: echo '🎁Generate values.yaml'
+    - run: echo '🎁Customizing values.yaml'
       shell: bash
 
     - name: Install Helm
@@ -162,6 +162,7 @@ runs:
         #echo "name: ${CHART_NAME}" >> Chart.yaml
 
         #Comienzo formación de values con los datos del cluster
+        echo "############ SECCION VARIABLES INYECTADAS #################" >> values.yaml
         echo "cluster:" >> values.yaml
         echo "  name: ${INPUT_TARGET_CLUSTER}"  >> values.yaml
         echo "  gslb: ${INPUT_GSLB}"  >> values.yaml

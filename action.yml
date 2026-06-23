@@ -1,7 +1,7 @@
 name: 'Despliegue y Sincronizacion con ArgoCD'
 
 inputs:
-#ACR
+#ECR
   ECR_ID:
     description: "ID de ECR (Account ID o Identifier, si lo necesitas)"
     required: true

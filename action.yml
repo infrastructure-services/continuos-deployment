@@ -182,6 +182,8 @@ runs:
         elif [[ ${{ inputs.REGISTRY_SELECTOR }}  == "ecr" ]]; then
           ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
           json_modificado=$(echo "$json_modificado" | jq --arg regname "$ECR_FULLNAME" '.appdata.registry = $regname')
+          json_modificado=$(echo "$json_modificado" | jq '.appdata.acrSecretName = ecr-secret')
+
         else
           echo "error::Tipo de registry desconocido"
           exit 1

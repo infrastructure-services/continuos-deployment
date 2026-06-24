@@ -276,7 +276,7 @@ runs:
     - name: Argo deploy ECR 🚀
       id: argo_ecr
       if: ${{ inputs.REGISTRY_SELECTOR == 'ecr' }}
-      uses: infrastructure-services/continuos-deployment@sync-argo
+      uses: infrastructure-services/continuos-deployment@argo-deploy-ecr
       with:
         appName: ${{ env.APP_NAME }}
         projectName: ${{ env.PROJECT_NAME }}

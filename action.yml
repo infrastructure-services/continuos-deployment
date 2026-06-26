@@ -128,6 +128,7 @@ runs:
         INPUT_SUFIJO: ${{ inputs.sufijo }}
         INPUT_CLUSTER_FQDN: ${{ inputs.clusterFqdn }}
       run: |
+        git --version
         APP_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.appname')
         PROJECT_NAME=$(echo "$APPDATA_JSON" | jq -r '.appdata.projectName')
         CHART_NAME="${PROJECT_NAME}-${APP_NAME}"

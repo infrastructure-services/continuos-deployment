@@ -178,15 +178,17 @@ runs:
         #Agrego la path de la registry según a qué registry fue
         echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt
         echo "Debug ----------------------------------- regcontent.txt"
-        sleeep 240s
-        echo "fin ----------------------------------- regcontent.txt"
         if [[ ${{ inputs.REGISTRY_SELECTOR }} == "acr" ]]; then
           ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
           json_modificado=$(echo "$json_modificado" | jq --arg regname "$ACR_FULL_NAME" '.appdata.registry = $regname')
         elif [[ ${{ inputs.REGISTRY_SELECTOR }}  == "ecr" ]]; then
+        echo "Debug ----------------------------------- 1"
           ECR_FULLNAME=$(jq -r '.ECR_FULLNAME' reg_content.txt)
+        echo "Debug ----------------------------------- 2"
           json_modificado=$(echo "$json_modificado" | jq --arg regname "$ECR_FULLNAME" '.appdata.registry = $regname')
-          json_modificado=$(echo "$json_modificado" | jq '.appdata.acrSecretName = ecr-secret')
+        echo "Debug ----------------------------------- 3"
+          json_modificado=$(echo "$json_modificado" | jq '.appdata.crSecretName = ecr-secret')
+        echo "Debug ----------------------------------- 3"
 
         else
           echo "error::Tipo de registry desconocido"

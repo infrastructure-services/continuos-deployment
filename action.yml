@@ -1,5 +1,5 @@
-name: 'Deploy for Andreani'
-description: 'Action to deploy custom Helm Chart for Andreani'
+name: 'Deploy for Witwot'
+description: 'Action to deploy custom Helm Chart for Witwot'
 inputs:
   # App
   appdataJson:

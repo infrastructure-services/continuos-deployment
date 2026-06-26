@@ -114,7 +114,7 @@ runs:
     - name: Check Application
       uses: infrastructure-services/continuos-integration@check-if-exists-app
       with:
-        gitOpsUrl: "https://github-integration.andreani.com"
+        gitOpsUrl: "https://github-integration-witwot.andreani.com"
       
     - name: Set Outputs and environments
       id: setOutputs

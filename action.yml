@@ -174,8 +174,12 @@ runs:
         REPO="${GITHUB_REPOSITORY_OWNER}--${REPO_NAME}"
         json_modificado=$(echo "$json_modificado" | jq --arg repo "$REPO" '.appdata.originRepo = $repo')
 
+        
         #Agrego la path de la registry según a qué registry fue
         echo '${{ inputs.REGISTRY_DATA }}' > reg_content.txt
+        echo "Debug ----------------------------------- regcontent.txt"
+        cat regcontent.txt
+        echo "fin ----------------------------------- regcontent.txt"
         if [[ ${{ inputs.REGISTRY_SELECTOR }} == "acr" ]]; then
           ACR_FULL_NAME=$(jq -r '.ACR_FULL_NAME' reg_content.txt)
           json_modificado=$(echo "$json_modificado" | jq --arg regname "$ACR_FULL_NAME" '.appdata.registry = $regname')

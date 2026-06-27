@@ -3,13 +3,13 @@ name: 'Despliegue y Sincronizacion con ArgoCD'
 inputs:
 #ECR
   ECR_ID:
-    description: "ID de ECR (Account ID o Identifier, si lo necesitas)"
+    description: "AWS Access Key ID"
     required: true
   ECR_PASSWORD:
     description: "Token temporal de ECR"
     required: true
   ECR_FULLNAME:
-    description: "URL completa del registry ECR (ej. 1234.dkr.ecr.region.amazonaws.com)"
+    description: "URL completa del registry ECR PUBLIC"
     required: true
 
 #App
@@ -93,14 +93,14 @@ runs:
               echo "Error en ArgoCD Login" >&2;
               exit 1
           fi
-      - name: Inyectar Secreto de ECR en AKS para ArgoCD
-        shell: bash
-        run: |
-          export PATH="/usr/local/bin:$PATH"
-          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
-          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
-          TOKEN=$(aws ecr-public get-login-password --region us-east-1)
-          aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
+      #- name: Inyectar Secreto de ECR en AKS para ArgoCD
+      #  shell: bash
+      #  run: |
+      #    export PATH="/usr/local/bin:$PATH"
+      #    aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
+      #    aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
+      #   TOKEN=$(aws ecr-public get-login-password --region us-east-1)
+      #    aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
 
       - name: Create Project
         shell: bash
@@ -125,8 +125,8 @@ runs:
                  sleep 40
                fi
             done
-            if [[ ${{inputs.environment}} =~ "test" ]]; then
-              echo "El proyecto $NAMESPACE es de test, le ponemos la ventana de sincronización"
+            if [[ "${{inputs.environment}}" =~ "test" ]]; then
+              echo "El proyecto ${{inputs.namespace}} es de test, le ponemos la ventana de sincronización"
               argocd proj windows add ${{inputs.namespace}} --kind deny --schedule "30 21 * * *" --duration 11h --applications "*"
               argocd proj windows enable-manual-sync ${{inputs.namespace}} 0
             fi
@@ -141,7 +141,7 @@ runs:
         run: |
           echo 'creacion app argocd'
           variableOk=0
-          argoCommand="argocd app create ${{ steps.name.outputs.applicationName }} --repo ${{ inputs.ECR_FULL_NAME }}/helm --helm-chart ${{inputs.projectName}}-${{inputs.appName}} --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision ${{ inputs.helmChartVersionLatest}} --dest-namespace ${{inputs.namespace}} --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project ${{inputs.namespace}} --grpc-web"
+          argoCommand="argocd app create ${{ steps.name.outputs.applicationName }} --repo ${{ inputs.ECR_FULLNAME }}/helm --helm-chart ${{inputs.projectName}}-${{inputs.appName}} --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision ${{ inputs.helmChartVersionLatest}} --dest-namespace ${{inputs.namespace}} --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project ${{inputs.namespace}} --grpc-web"
           
           for i in {1..2}
           do

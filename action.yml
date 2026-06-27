@@ -199,20 +199,22 @@ runs:
         echo '  REACT_APP_DISABLE_APM: ${{ inputs.REACT_APP_DISABLE_APM }}' >> values.yaml
         echo '  NEXT_PUBLIC_DISABLE_APM: ${{ inputs.NEXT_PUBLIC_DISABLE_APM }}' >> values.yaml
         echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  ELASTIC_APM_SERVICE_NAME: ${NAMESPACE}_${APP_NAME}' >> values.yaml
+        echo "  ELASTIC_APM_SERVICE_NAME: ${NAMESPACE}_${APP_NAME}" >> values.yaml
         echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  Observability__ServerUrl: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  Observability__ServiceName: ${NAMESPACE}_${APP_NAME}' >> values.yaml
+        echo "  Observability__ServiceName: ${NAMESPACE}_${APP_NAME}" >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${NAMESPACE}_${APP_NAME}' >> values.yaml
+        echo "  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${NAMESPACE}_${APP_NAME}" >> values.yaml
         if [[ ${{inputs.environment}} == "test" ]]; then
           echo '  Observability__Environment: Test'  >> values.yaml
         elif [[ ${{inputs.environment}} == "qa" ]]; then
           echo '  Observability__Environment: QA'  >> values.yaml
         elif [[ ${{inputs.environment}} == "preprod" ]]; then
           echo '  Observability__Environment: Preprod'  >> values.yaml
+        elif [[ ${{inputs.environment}} == "sandbox" ]]; then
+          echo '  Observability__Environment: Sandbox'  >> values.yaml
         else
           echo '  Observability__Environment: Production'  >> values.yaml
         fi

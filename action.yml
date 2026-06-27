@@ -90,7 +90,8 @@ runs:
         aws ecr create-repository --repository-name "$REPOSITORY_NAME" --region us-east-1
 
         # Login OCI
-        aws ecr get-login-password --region us-east-1 | helm registry login ${{inputs.ECR_FULLNAME }} --username AWS --password-stdin
+        #aws ecr get-login-password --region us-east-1 | helm registry login ${{inputs.ECR_FULLNAME }} --username AWS --password-stdin
+        aws ecr get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
 
         # Push al repo ECR Public (SIN agregar chart name extra ni duplicar path)
         helm push ${{ env.CHART_NAME }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}/helm/

@@ -100,6 +100,7 @@ runs:
           aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
           aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
           TOKEN=$(aws ecr-public get-login-password --region us-east-1)
+          aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
 
       - name: Create Project
         shell: bash

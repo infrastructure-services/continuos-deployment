@@ -163,12 +163,11 @@ runs:
           #Wait. Espera la synchronizacion, espera 40s
           argoWait="argocd app wait ${{ steps.name.outputs.applicationName }} --health --operation --timeout 30 --grpc-web"
           if eval "$argoWait"; then
-                echo "ArgoCD app wait OK"
-                break
-            else
-                echo "ArgoCD app wait 40s"
-                sleep 40
-            fi
+            echo "ArgoCD app wait OK"
+          else
+            echo "ArgoCD app wait 40s"
+              sleep 40
+          fi
 
       - name: Sync
         shell: bash

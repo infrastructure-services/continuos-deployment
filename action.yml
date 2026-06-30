@@ -296,4 +296,4 @@ runs:
     - name: Cleanup Artifact
       uses: geekyeggo/delete-artifact@v6
       with:
-        name: ${{env.CHART_NAME}}
+        name: ${{env.CHART_NAME}}-${{inputs.sufijo}}

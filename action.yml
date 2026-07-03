@@ -243,6 +243,132 @@ runs:
       shell: bash
       run: cat Chart.yaml
 
+    - name: Validate Resulting values.yaml
+      shell: bash
+      run: |
+        if ! command -v yq >/dev/null 2>&1; then
+          echo "ERROR: falta instalar yq en el Runner - Contactar a DevOps"
+          echo "Requiere yq v4: https://github.com/mikefarah/yq"
+          exit 2
+        fi
+
+        validate_file() {
+          local file="values.yaml"
+          local has_errors=0
+          local tmp_dir
+
+          if [[ ! -f "$file" ]]; then
+            echo "ERROR: no existe el archivo: $file"
+            return 1
+          fi
+
+          if ! yq e '.' "$file" >/dev/null 2>&1; then
+            echo ":error: YAML inválido - Revisar el formato del values"
+            return 1
+          fi
+
+          tmp_dir="$(mktemp -d)"
+
+          local normal_keys="$tmp_dir/env_normal.keys"
+          local secret_keys="$tmp_dir/env_secret.keys"
+          local default_keys="$tmp_dir/env_default.keys"
+
+          : > "$normal_keys"
+          : > "$secret_keys"
+          : > "$default_keys"
+
+          extract_section_keys() {
+            local section="$1"
+            local output_file="$2"
+            local section_type
+
+            section_type="$(yq e ".$section | type" "$file" 2>/dev/null || echo "!!null")"
+
+            if [[ "$section_type" == "!!null" ]]; then
+              return 0
+            fi
+
+            if [[ "$section_type" != "!!map" ]]; then
+              echo "ERROR: $file -> la sección '$section' existe pero no es un mapa clave/valor"
+              echo " :error: Error de variables en '$section' - Revisa el values del ambiente"
+              has_errors=1
+              return 0
+            fi
+
+            yq e -r ".$section | keys | .[]" "$file" > "$output_file"
+          }
+
+          validate_internal_duplicates() {
+            local section="$1"
+            local keys_file="$2"
+            local duplicated_keys
+
+            duplicated_keys="$(sort "$keys_file" | uniq -d || true)"
+
+            if [[ -n "$duplicated_keys" ]]; then
+              echo "ERROR: $file -> variables duplicadas dentro de '$section':"
+              echo ":error: Se encontraron variables duplicadas dentro de '$section'. Mirar log del wofklow para una listado y revisar el archivo values.yaml para eliminarlas:"
+              while IFS= read -r key; do
+                [[ -z "$key" ]] && continue
+                echo "  - $key"
+              done <<< "$duplicated_keys"
+
+              has_errors=1
+            fi
+          }
+
+          validate_cross_duplicates() {
+            local section_a="$1"
+            local file_a="$2"
+            local section_b="$3"
+            local file_b="$4"
+            local duplicated_keys
+
+            duplicated_keys="$(comm -12 <(sort -u "$file_a") <(sort -u "$file_b") || true)"
+
+            if [[ -n "$duplicated_keys" ]]; then
+              echo "ERROR: $file -> variables duplicadas entre '$section_a' y '$section_b':"
+              echo ":error: Se encontraron variables duplicadas dentro de '$section'. Mirar log del wofklow para una listado y revisar el archivo values.yaml para eliminarlas:"
+              while IFS= read -r key; do
+                [[ -z "$key" ]] && continue
+                echo "  - $key"
+              done <<< "$duplicated_keys"
+
+              has_errors=1
+            fi
+          }
+
+          extract_section_keys "env.normal" "$normal_keys"
+          extract_section_keys "env.secret" "$secret_keys"
+          extract_section_keys "env_default" "$default_keys"
+
+          validate_internal_duplicates "env.normal" "$normal_keys"
+          validate_internal_duplicates "env.secret" "$secret_keys"
+          validate_internal_duplicates "env_default" "$default_keys"
+
+          validate_cross_duplicates "env.normal" "$normal_keys" "env.secret" "$secret_keys"
+          validate_cross_duplicates "env.secret" "$secret_keys" "env_default" "$default_keys"
+
+          rm -rf "$tmp_dir"
+
+          if [[ "$has_errors" -eq 0 ]]; then
+            echo "OK: $file no contiene variables duplicadas no permitidas"
+          fi
+
+          return "$has_errors"
+        }
+
+        global_errors=0
+
+        for file in "$@"; do
+          if ! validate_file "$file"; then
+            global_errors=1
+          fi
+        done
+
+        exit "$global_errors"
+
+
     - name: Archive values yaml
       uses: actions/upload-artifact@v6
       with:

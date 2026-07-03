@@ -307,7 +307,7 @@ runs:
 
             if [[ -n "$duplicated_keys" ]]; then
               echo "ERROR: $file -> variables duplicadas dentro de '$section':"
-              echo "::error:: Se encontraron variables duplicadas dentro de '$section'. Mirar log del wofklow para una listado y revisar el archivo values.yaml para eliminarlas:"
+              echo "::error:: Se encontraron variables duplicadas dentro de '$section'. Mirar log del wofklow para una lista y revisar el archivo values.yaml para eliminarlas:"
               while IFS= read -r key; do
                 [[ -z "$key" ]] && continue
                 echo "  - $key"
@@ -328,7 +328,7 @@ runs:
 
             if [[ -n "$duplicated_keys" ]]; then
               echo "ERROR: $file -> variables duplicadas entre '$section_a' y '$section_b':"
-              echo "::error:: Se encontraron variables duplicadas. Mirar log del wofklow para una listado y revisar el archivo values.yaml para eliminarlas:"
+              echo "::error:: Se encontraron variables duplicadas. Mirar log del wofklow para una lista y revisar el archivo values.yaml para eliminarlas:"
               while IFS= read -r key; do
                 [[ -z "$key" ]] && continue
                 echo "  - $key"

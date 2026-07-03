@@ -229,6 +229,7 @@ runs:
         AZURE_KEYVAULT_PREFIX: ${{ inputs.AZURE_KEYVAULT_PREFIX }}
       if: ${{ inputs.AZURE_KEYVAULT_NAME != '' && inputs.AZURE_KEYVAULT_TENANT != '' && inputs.AZURE_KEYVAULT_CLIENT_ID != '' && inputs.AZURE_KEYVAULT_SECRET != '' }}
       run: |
+        #Inyectando variables de Key Vault
         sed -i "/scalingcontrol:/i \    AzureKeyVault__Name: ${AZURE_KEYVAULT_NAME}" values.yaml
         sed -i "/scalingcontrol:/i \    AzureKeyVault__TenantId: ${AZURE_KEYVAULT_TENANT}" values.yaml
         sed -i "/scalingcontrol:/i \    AzureKeyVault__ClientId: ${AZURE_KEYVAULT_CLIENT_ID}" values.yaml
@@ -246,6 +247,7 @@ runs:
     - name: Validate Resulting values.yaml
       shell: bash
       run: |
+        #Validando values.yaml
         if ! command -v yq >/dev/null 2>&1; then
           echo "ERROR: falta instalar yq en el Runner - Contactar a DevOps"
           echo "Requiere yq v4: https://github.com/mikefarah/yq"

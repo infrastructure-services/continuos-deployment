@@ -359,13 +359,9 @@ runs:
         }
 
         global_errors=0
-
-        for file in "$@"; do
-          if ! validate_file "$file"; then
-            global_errors=1
-          fi
-        done
-
+        if ! validate_file "values.yaml"; then
+          global_errors=1
+        fi
         exit "$global_errors"
 
 

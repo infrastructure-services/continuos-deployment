@@ -1,4 +1,5 @@
 name: 'Generic helm pack and Push to ECR'
+description: "Hop pack helm"
 inputs:
   ECR_ID:
     description: "user de ecr"
@@ -82,9 +83,9 @@ runs:
           #Login de helm registry
           aws ecr-public get-login-password --region us-east-1 | helm registry login public.ecr.aws --username AWS --password-stdin
           echo inputs.TeamProject: ${{inputs.TeamProject}}
-          echo inputs.appName: ${{inputs.appName }}
+          echo inputs.appName: ${{inputs.appName}}
           echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
-          echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME }}
-
+          echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME}}
+          echo ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}
           #Push de la imagen al repositorio creado
-          helm push ${{inputs.TeamProject}}-${{inputs.appName }}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME }}
+          helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}

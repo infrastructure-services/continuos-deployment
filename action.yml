@@ -86,6 +86,6 @@ runs:
           echo inputs.appName: ${{inputs.appName}}
           echo inputs.helmChartVersionLatest: ${{inputs.helmChartVersionLatest}}
           echo inputs.ECR_FULLNAME: ${{inputs.ECR_FULLNAME}}
-          echo ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}
+          echo repo: ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}
           #Push de la imagen al repositorio creado
           helm push ${{inputs.TeamProject}}-${{inputs.appName}}-${{inputs.helmChartVersionLatest}}.tgz  oci://${{inputs.ECR_FULLNAME}}

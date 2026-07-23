@@ -27,33 +27,51 @@ runs:
       shell: bash
       run: |
         REPO_ID="${{ github.repository_id }}"
-
+    
         SENTINEL_URL="${{ inputs.sentinel_url }}/api/v1/scans/repository/${REPO_ID}/validation"
-
+    
         echo "🔗 URL de validación: ${SENTINEL_URL}"
-
+    
         RETRY_WAIT=5
-
+        MAX_RETRIES=5
+        RETRY_COUNT=0
+    
         while true; do
           echo "🔍 Consultando Sentinel API..."
-
-          HTTP_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" -X GET "$SENTINEL_URL")
-
+    
+          HTTP_STATUS=$(curl \
+            --silent \
+            --output /dev/null \
+            --write-out "%{http_code}" \
+            -X GET \
+            "$SENTINEL_URL"
+          )
+    
           echo "📡 HTTP Status recibido: $HTTP_STATUS"
-
+    
           if [ "$HTTP_STATUS" -eq 200 ]; then
             echo "✅ Quality Gate passed."
             exit 0
-
+    
           elif [ "$HTTP_STATUS" -eq 409 ]; then
             echo "❌ Quality Gate failed."
             echo "⛔ La API Sentinel respondió con 409: el análisis no superó el Quality Gate."
             exit 1
-
+    
           elif [ "$HTTP_STATUS" -eq 204 ]; then
-            echo "⏳ La API Sentinel respondió con 204 (sin resultado aún). Reintentando en ${RETRY_WAIT}s..."
-            sleep $RETRY_WAIT
-
+            if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then
+              echo "❌ Se alcanzó el máximo de ${MAX_RETRIES} reintentos."
+              echo "⛔ Sentinel todavía no devolvió un resultado para el Quality Gate."
+              exit 0
+            fi
+    
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+    
+            echo "⏳ La API Sentinel respondió con 204 (sin resultado aún)."
+            echo "🔄 Reintento ${RETRY_COUNT}/${MAX_RETRIES} en ${RETRY_WAIT}s..."
+    
+            sleep "$RETRY_WAIT"
+    
           else
             echo "❌ Respuesta inesperada de la API Sentinel: HTTP $HTTP_STATUS"
             echo "⛔ Se interrumpe el pipeline por error desconocido."

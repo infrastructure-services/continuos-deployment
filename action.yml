@@ -69,7 +69,7 @@ runs:
           elif [ "$HTTP_STATUS" -eq 204 ]; then
             if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then
               echo "❌ Se alcanzó el máximo de ${MAX_RETRIES} reintentos."
-              echo "::error::⛔ Sentinel todavía no devolvió un resultado para el Quality Gate."
+              echo "::warning::⛔ Sentinel todavía no devolvió un resultado para el Quality Gate."
               exit 0
             fi
     

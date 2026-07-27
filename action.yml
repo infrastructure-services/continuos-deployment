@@ -64,8 +64,14 @@ runs:
       - name: Login ArgoCD
         shell: bash
         run: |-
+          echo 'login a argocd'
           echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME }} --username ${{ inputs.ACR_USERNAME }} --password-stdin
           echo 'login a argocd'
+          echo "umask: $(umask)"
+          echo "HOME: $HOME"
+          echo "USER: $(whoami)"
+          ls -la ~/.config/argocd/config 2>/dev/null
+          ls -la ~/.argocd/config 2>/dev/null
           variableOk=0
           argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
           for i in {1..5}

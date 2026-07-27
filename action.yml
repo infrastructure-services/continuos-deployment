@@ -70,8 +70,6 @@ runs:
           echo "umask: $(umask)"
           echo "HOME: $HOME"
           echo "USER: $(whoami)"
-          ls -la ~/.config/argocd/config 2>/dev/null
-          ls -la ~/.argocd/config 2>/dev/null
           variableOk=0
           argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
           for i in {1..5}

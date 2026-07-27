@@ -12,6 +12,10 @@ inputs:
     description: "URL base de la API de Sentinel (sin trailing slash)"
     required: false
     default: "https://github-integration-gitops-prod.apps.andreani.com.ar"
+  nolocking:
+    description: "No Bloqueante=true"
+    required: false
+    default: "true"
 
 runs:
   using: "composite"
@@ -54,9 +58,13 @@ runs:
             exit 0
     
           elif [ "$HTTP_STATUS" -eq 409 ]; then
-            echo "❌ Quality Gate failed."
+            echo "::error::❌ Quality Gate failed."
             echo "⛔ La API Sentinel respondió con 409: el análisis no superó el Quality Gate."
-            exit 1
+            if [ ${{ inputs.nolocking }} == "true" ]; then
+              exit 0
+            else
+              exit 1
+            fi
     
           elif [ "$HTTP_STATUS" -eq 204 ]; then
             if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then

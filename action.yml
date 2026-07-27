@@ -2,7 +2,7 @@ name: 'Step Selector para validaciones pre-productivas'
 description: 'Unique step to Validate Status'
 inputs:
   nolocking:
-    description: "Bloqueante=true"
+    description: "No Bloqueante=true"
     required: false
     default: "true"
   type:
@@ -33,3 +33,4 @@ runs:
       with:
         scan_id: ${{ inputs.scan_id }}
         sentinel_url: ${{ inputs.sentinel_url }}
+        nolocking: ${{ inputs.nolocking }}

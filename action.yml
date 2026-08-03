@@ -1,88 +1,172 @@
 name: 'Validate PreProd With Sentinel'
 description: 'Actin to Validate Project'
 inputs:
-  branch:
-    description: "Branch Analysis"
-    required: false
-    default: "main"
-  scan_id:
-    description: "ScanId para consultar el Quality Gate en la API Sentinel"
+  app-name:
+    description: Nombre exacto de la aplicación en Veracode.
     required: true
-  sentinel_url:
-    description: "URL base de la API de Sentinel (sin trailing slash)"
+  veracode-api-id:
+    description: API ID HMAC de Veracode.
+    required: true
+  veracode-api-key:
+    description: API Secret Key HMAC de Veracode.
+    required: true
+  api-url:
+    description: URL base de la API de Veracode, sin barra final.
     required: false
-    default: "https://github-integration-gitops-prod.apps.andreani.com.ar"
-  nolocking:
-    description: "No Bloqueante=true"
-    required: false
-    default: "true"
+    default: https://api.veracode.com
 
+outputs:
+  policy-status:
+    description: Estado de cumplimiento encontrado, por ejemplo PASSED, DID_NOT_PASS o NOT_ASSESSED.
+    value: ${{ steps.policy.outputs.policy-status }}
+  application-found:
+    description: Indica si se encontró una aplicación con el nombre exacto indicado.
+    value: ${{ steps.policy.outputs.application-found }}
 runs:
-  using: "composite"
+  using: composite
   steps:
-    - name: Key Repository
-      uses: actions/github-script@v8
+    - name: Configurar Python
+      uses: actions/setup-python@v6
       with:
-        script: |
-          const name = context.repo.repo
-          const organization = context.repo.owner
-          core.exportVariable('KEY_REPOSITORY', `${organization}_${name}`)
-    - name: Validate
+        python-version: '3.12'
+
+    - name: Instalar cliente Veracode HMAC
       shell: bash
       run: |
-        REPO_ID="${{ github.repository_id }}"
-    
-        SENTINEL_URL="${{ inputs.sentinel_url }}/api/v1/scans/repository/${REPO_ID}/validation"
-    
-        echo "🔗 URL de validación: ${SENTINEL_URL}"
-    
-        RETRY_WAIT=5
-        MAX_RETRIES=5
-        RETRY_COUNT=0
-    
-        while true; do
-          echo "🔍 Consultando Sentinel API..."
-    
-          HTTP_STATUS=$(curl \
-            --silent \
-            --output /dev/null \
-            --write-out "%{http_code}" \
-            -X GET \
-            "$SENTINEL_URL"
-          )
-    
-          echo "📡 HTTP Status recibido: $HTTP_STATUS"
-    
-          if [ "$HTTP_STATUS" -eq 200 ]; then
-            echo "✅ Quality Gate passed."
-            exit 0
-    
-          elif [ "$HTTP_STATUS" -eq 409 ]; then
-            echo "::error::❌ Quality Gate failed."
-            echo "⛔ La API Sentinel respondió con 409: el análisis no superó el Quality Gate."
-            if [ ${{ inputs.nolocking }} == "true" ]; then
-              exit 0
-            else
-              exit 1
-            fi
-    
-          elif [ "$HTTP_STATUS" -eq 204 ]; then
-            if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then
-              echo "❌ Se alcanzó el máximo de ${MAX_RETRIES} reintentos."
-              echo "::warning::⛔ Sentinel todavía no devolvió un resultado para el Quality Gate."
-              exit 0
-            fi
-    
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-    
-            echo "⏳ La API Sentinel respondió con 204 (sin resultado aún)."
-            echo "🔄 Reintento ${RETRY_COUNT}/${MAX_RETRIES} en ${RETRY_WAIT}s..."
-    
-            sleep "$RETRY_WAIT"
-    
+        set -Eeuo pipefail
+
+        python -m pip install \
+          --disable-pip-version-check \
+          --no-cache-dir \
+          'httpie==3.2.4' \
+          'veracode-api-signing==26.5.0'
+
+        command -v http >/dev/null || {
+          echo '::error::No se encontró el ejecutable http de HTTPie.'
+          exit 1
+        }
+
+        command -v jq >/dev/null || {
+          echo '::error::El runner no tiene jq instalado.'
+          exit 1
+        }
+
+        echo "[INFO] HTTPie: $(http --version)"
+        echo "[INFO] jq: $(jq --version)"
+
+    - name: Consultar cumplimiento de Policy
+      id: policy
+      shell: bash
+      env:
+        APP_NAME: ${{ inputs.app-name }}
+        VERACODE_API_KEY_ID: ${{ inputs.veracode-api-id }}
+        VERACODE_API_KEY_SECRET: ${{ inputs.veracode-api-key }}
+        VERACODE_API_URL: ${{ inputs.api-url }}
+      run: |
+        set -Eeuo pipefail
+
+        : "${APP_NAME:?El input app-name está vacío}"
+        : "${VERACODE_API_KEY_ID:?El input veracode-api-id está vacío}"
+        : "${VERACODE_API_KEY_SECRET:?El input veracode-api-key está vacío}"
+        : "${VERACODE_API_URL:?El input api-url está vacío}"
+
+        API_URL="${VERACODE_API_URL%/}"
+        RESPONSE_FILE="${RUNNER_TEMP}/veracode-applications-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+
+        echo "[INFO] Consultando aplicación '$APP_NAME' en Veracode..."
+
+        set +e
+        http \
+          --check-status \
+          --ignore-stdin \
+          --body \
+          --auth-type=veracode_hmac \
+          GET \
+          "${API_URL}/appsec/v1/applications" \
+          name=="$APP_NAME" \
+          Accept:application/json \
+          > "$RESPONSE_FILE"
+        HTTP_EXIT_CODE=$?
+        set -e
+
+        if [[ "$HTTP_EXIT_CODE" -ne 0 ]]; then
+          echo "::error::Falló la consulta a la API de Veracode (HTTPie exit code=$HTTP_EXIT_CODE)."
+
+          if jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
+            jq . "$RESPONSE_FILE"
           else
-            echo "::error::❌ Respuesta inesperada de la API Sentinel: HTTP $HTTP_STATUS"
-            echo "⛔ Se interrumpe el pipeline por error desconocido."
-            exit 1
+            cat "$RESPONSE_FILE" || true
           fi
-        done
+
+          exit "$HTTP_EXIT_CODE"
+        fi
+
+        if ! jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
+          echo '::error::La API de Veracode devolvió una respuesta que no es JSON válido.'
+          cat "$RESPONSE_FILE" || true
+          exit 1
+        fi
+
+        APP_COUNT="$(
+          jq -r \
+            --arg name "$APP_NAME" \
+            '[
+              ._embedded.applications[]?
+              | select(.profile.name == $name)
+            ] | length' \
+            "$RESPONSE_FILE"
+        )"
+
+        if [[ "$APP_COUNT" -eq 0 ]]; then
+          echo 'application-found=false' >> "$GITHUB_OUTPUT"
+          echo 'policy-status=NONE' >> "$GITHUB_OUTPUT"
+          echo "::error::No se encontró una aplicación con nombre exacto '$APP_NAME'."
+          exit 1
+        fi
+
+        if [[ "$APP_COUNT" -gt 1 ]]; then
+          echo 'application-found=true' >> "$GITHUB_OUTPUT"
+          echo 'policy-status=AMBIGUOUS' >> "$GITHUB_OUTPUT"
+          echo "::error::Se encontró más de una aplicación con nombre exacto '$APP_NAME'."
+          exit 1
+        fi
+
+        STATUS="$(
+          jq -r \
+            --arg name "$APP_NAME" \
+            'first(
+              ._embedded.applications[]?
+              | select(.profile.name == $name)
+              | (
+                  (
+                    .profile.policies // []
+                    | map(select(.is_default == true))
+                    | .[0].policy_compliance_status
+                  )
+                  // .profile.policies[0].policy_compliance_status
+                  // empty
+                )
+            ) // empty' \
+            "$RESPONSE_FILE"
+        )"
+
+        echo 'application-found=true' >> "$GITHUB_OUTPUT"
+        echo "policy-status=${STATUS:-NONE}" >> "$GITHUB_OUTPUT"
+
+        echo "Policy compliance de '$APP_NAME': ${STATUS:-<sin estado>}"
+
+        if [[ "$STATUS" != 'PASSED' ]]; then
+          echo "::error::Veracode Policy no cumplida (status=${STATUS:-NONE}) -> despliegue bloqueado"
+
+          if [[ "$STATUS" == 'NOT_ASSESSED' ]]; then
+            echo '::warning::La aplicación todavía no tiene una política evaluada en Veracode Platform.'
+          fi
+
+          if [[ -z "$STATUS" ]]; then
+            echo '::warning::La aplicación existe, pero no se encontró policy_compliance_status.'
+          fi
+
+          exit 1
+        fi
+
+        echo "✅ Policy PASSED para '$APP_NAME' -> despliegue habilitado."

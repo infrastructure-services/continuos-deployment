@@ -13,7 +13,7 @@ inputs:
     description: "input que queda para datos recibidos de preparativos"
     required: false
     default: ""
-  worflow_ci:
+  worflow:
     description: "Input de workflow"
     required: false
     default: ""
@@ -54,7 +54,7 @@ runs:
         
     - name: Validate Veracode
       continue-on-error: ${{ inputs.nolocking == 'true' }}
-      if: ${{ inputs.worflow_ci == '.NET' || inputs.worflow_ci == '.NET 8' || inputs.worflow_ci == '.NET 10' }}
+      if: ${{ inputs.worflow == '.NET' || inputs.worflow == '.NET 8' || inputs.worflow == '.NET 10' }}
       uses: infrastructure-services/continuos-deployment@validate-pre-prod-veracode
       with:
         app-name: ${{ inputs.app-name}}

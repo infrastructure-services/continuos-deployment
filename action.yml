@@ -13,7 +13,7 @@ inputs:
     description: "input que queda para datos recibidos de preparativos"
     required: false
     default: ""
-  worflow:
+  workflow:
     description: "Input de workflow"
     required: false
     default: ""
@@ -60,3 +60,4 @@ runs:
         app-name: ${{ inputs.app-name}}
         veracode-api-id: ${{ inputs.veracode-api-id }}
         veracode-api-key: ${{ inputs.veracode-api-key }}
+        workflow:  ${{ inputs.workflow }}

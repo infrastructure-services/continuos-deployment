@@ -13,7 +13,24 @@ inputs:
     description: "input que queda para datos recibidos de preparativos"
     required: false
     default: ""
-
+  worflow_ci:
+    description: "Input de workflow"
+    required: false
+    default: ""
+ #Inputs para Veracode   
+  app-name:
+    description: Nombre exacto de la aplicación en Veracode.
+    required: false
+  veracode-api-id:
+    description: API ID HMAC de Veracode.
+    required: false
+  veracode-api-key:
+    description: API Secret Key HMAC de Veracode.
+    required: false
+  api-url:
+    description: URL base de la API de Veracode, sin barra final.
+    required: false
+    default: https://api.veracode.com
 #Inputs para Sentinel
   scan_id:
     description: "ScanId para consultar el Quality Gate en la API Sentinel"
@@ -34,3 +51,12 @@ runs:
         scan_id: ${{ inputs.scan_id }}
         sentinel_url: ${{ inputs.sentinel_url }}
         nolocking: ${{ inputs.nolocking }}
+        
+    - name: Validate Veracode
+      continue-on-error: ${{ inputs.nolocking == 'true' }}
+      if: ${{ inputs.worflow_ci == '.NET' || inputs.worflow_ci == '.NET 8' || inputs.worflow_ci == '.NET 10' }}
+      uses: infrastructure-services/continuos-deployment@validate-pre-prod-veracode
+      with:
+        app-name: ${{ inputs.app-name}}
+        veracode-api-id: ${{ inputs.veracode-api-id }}
+        veracode-api-key: ${{ inputs.veracode-api-key }}

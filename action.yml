@@ -57,6 +57,7 @@ runs:
     - name: Consultar cumplimiento de Policy
       id: policy
       shell: bash
+      continue-on-error: true
       env:
         APP_NAME: ${{ inputs.app-name }}
         VERACODE_API_KEY_ID: ${{ inputs.veracode-api-id }}

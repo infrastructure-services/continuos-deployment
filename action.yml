@@ -1,5 +1,5 @@
-name: 'Validate PreProd With Sentinel'
-description: 'Actin to Validate Project'
+name: 'Validate PreProd With Veracode'
+description: 'Action to Validate Project'
 inputs:
   app-name:
     description: Nombre exacto de la aplicación en Veracode.
@@ -57,7 +57,6 @@ runs:
     - name: Consultar cumplimiento de Policy
       id: policy
       shell: bash
-      continue-on-error: true
       env:
         APP_NAME: ${{ inputs.app-name }}
         VERACODE_API_KEY_ID: ${{ inputs.veracode-api-id }}
@@ -74,93 +73,114 @@ runs:
         API_URL="${VERACODE_API_URL%/}"
         RESPONSE_FILE="${RUNNER_TEMP}/veracode-applications-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
 
-        echo "[INFO] Consultando aplicación '$APP_NAME' en Veracode..."
+        MAX_RETRIES=5
+        RETRY_WAIT=30
+        RETRY_COUNT=0
 
-        set +e
-        http \
-          --check-status \
-          --ignore-stdin \
-          --body \
-          --auth-type=veracode_hmac \
-          GET \
-          "${API_URL}/appsec/v1/applications" \
-          name=="$APP_NAME" \
-          Accept:application/json \
-          > "$RESPONSE_FILE"
-        HTTP_EXIT_CODE=$?
-        set -e
+        while true; do
+          echo "[INFO] Consultando aplicación '$APP_NAME' en Veracode..."
+          echo "[INFO] Intento $((RETRY_COUNT + 1)) de $((MAX_RETRIES + 1))"
 
-        if [[ "$HTTP_EXIT_CODE" -ne 0 ]]; then
-          echo "::error::Falló la consulta a la API de Veracode (HTTPie exit code=$HTTP_EXIT_CODE)."
+          set +e
+          http \
+            --check-status \
+            --ignore-stdin \
+            --body \
+            --auth-type=veracode_hmac \
+            GET \
+            "${API_URL}/appsec/v1/applications" \
+            name=="$APP_NAME" \
+            Accept:application/json \
+            > "$RESPONSE_FILE"
+          HTTP_EXIT_CODE=$?
+          set -e
 
-          if jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
-            jq . "$RESPONSE_FILE"
-          else
-            cat "$RESPONSE_FILE" || true
+          if [[ "$HTTP_EXIT_CODE" -ne 0 ]]; then
+            echo "::error::Falló la consulta a la API de Veracode (HTTPie exit code=$HTTP_EXIT_CODE)."
+
+            if jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
+              jq . "$RESPONSE_FILE"
+            else
+              cat "$RESPONSE_FILE" || true
+            fi
+
+            exit "$HTTP_EXIT_CODE"
           fi
 
-          exit "$HTTP_EXIT_CODE"
-        fi
+          if ! jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
+            echo '::error::La API de Veracode devolvió una respuesta que no es JSON válido.'
+            cat "$RESPONSE_FILE" || true
+            exit 1
+          fi
 
-        if ! jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
-          echo '::error::La API de Veracode devolvió una respuesta que no es JSON válido.'
-          cat "$RESPONSE_FILE" || true
-          exit 1
-        fi
+          APP_COUNT="$(
+            jq -r \
+              --arg name "$APP_NAME" \
+              '[
+                ._embedded.applications[]?
+                | select(.profile.name == $name)
+              ] | length' \
+              "$RESPONSE_FILE"
+          )"
 
-        APP_COUNT="$(
-          jq -r \
-            --arg name "$APP_NAME" \
-            '[
-              ._embedded.applications[]?
-              | select(.profile.name == $name)
-            ] | length' \
-            "$RESPONSE_FILE"
-        )"
+          if [[ "$APP_COUNT" -eq 0 ]]; then
+            echo 'application-found=false' >> "$GITHUB_OUTPUT"
+            echo 'policy-status=NONE' >> "$GITHUB_OUTPUT"
+            echo "::error::No se encontró una aplicación con nombre exacto '$APP_NAME'."
+            exit 1
+          fi
 
-        if [[ "$APP_COUNT" -eq 0 ]]; then
-          echo 'application-found=false' >> "$GITHUB_OUTPUT"
-          echo 'policy-status=NONE' >> "$GITHUB_OUTPUT"
-          echo "::error::No se encontró una aplicación con nombre exacto '$APP_NAME'."
-          exit 1
-        fi
+          if [[ "$APP_COUNT" -gt 1 ]]; then
+            echo 'application-found=true' >> "$GITHUB_OUTPUT"
+            echo 'policy-status=AMBIGUOUS' >> "$GITHUB_OUTPUT"
+            echo "::error::Se encontró más de una aplicación con nombre exacto '$APP_NAME'."
+            exit 1
+          fi
 
-        if [[ "$APP_COUNT" -gt 1 ]]; then
-          echo 'application-found=true' >> "$GITHUB_OUTPUT"
-          echo 'policy-status=AMBIGUOUS' >> "$GITHUB_OUTPUT"
-          echo "::error::Se encontró más de una aplicación con nombre exacto '$APP_NAME'."
-          exit 1
-        fi
-
-        STATUS="$(
-          jq -r \
-            --arg name "$APP_NAME" \
-            'first(
-              ._embedded.applications[]?
-              | select(.profile.name == $name)
-              | (
-                  (
-                    .profile.policies // []
-                    | map(select(.is_default == true))
-                    | .[0].policy_compliance_status
+          STATUS="$(
+            jq -r \
+              --arg name "$APP_NAME" \
+              'first(
+                ._embedded.applications[]?
+                | select(.profile.name == $name)
+                | (
+                    (
+                      .profile.policies // []
+                      | map(select(.is_default == true))
+                      | .[0].policy_compliance_status
+                    )
+                    // .profile.policies[0].policy_compliance_status
+                    // empty
                   )
-                  // .profile.policies[0].policy_compliance_status
-                  // empty
-                )
-            ) // empty' \
-            "$RESPONSE_FILE"
-        )"
+              ) // empty' \
+              "$RESPONSE_FILE"
+          )"
+
+          echo "Policy compliance de '$APP_NAME': ${STATUS:-<sin estado>}"
+
+          # Si todavía no fue evaluada, esperamos y volvemos a consultar.
+          if [[ "$STATUS" == "NOT_ASSESSED" && "$RETRY_COUNT" -lt "$MAX_RETRIES" ]]; then
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+
+            echo "::warning::Policy todavía en estado NOT_ASSESSED."
+            echo "[INFO] Esperando ${RETRY_WAIT}s antes del reintento ${RETRY_COUNT}/${MAX_RETRIES}..."
+
+            sleep "$RETRY_WAIT"
+            continue
+          fi
+
+          # Para cualquier otro estado dejamos de consultar.
+          break
+        done
 
         echo 'application-found=true' >> "$GITHUB_OUTPUT"
         echo "policy-status=${STATUS:-NONE}" >> "$GITHUB_OUTPUT"
-
-        echo "Policy compliance de '$APP_NAME': ${STATUS:-<sin estado>}"
 
         if [[ "$STATUS" != 'PASSED' ]]; then
           echo "::error::Veracode Policy no cumplida (status=${STATUS:-NONE}) -> despliegue bloqueado"
 
           if [[ "$STATUS" == 'NOT_ASSESSED' ]]; then
-            echo '::warning::La aplicación todavía no tiene una política evaluada en Veracode Platform.'
+            echo "::error::La aplicación continúa en NOT_ASSESSED después de ${MAX_RETRIES} reintentos."
           fi
 
           if [[ -z "$STATUS" ]]; then

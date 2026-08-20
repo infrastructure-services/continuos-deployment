@@ -64,23 +64,23 @@ runs:
         VERACODE_API_URL: ${{ inputs.api-url }}
       run: |
         set -Eeuo pipefail
-
+    
         : "${APP_NAME:?El input app-name está vacío}"
         : "${VERACODE_API_KEY_ID:?El input veracode-api-id está vacío}"
         : "${VERACODE_API_KEY_SECRET:?El input veracode-api-key está vacío}"
         : "${VERACODE_API_URL:?El input api-url está vacío}"
-
+    
         API_URL="${VERACODE_API_URL%/}"
         RESPONSE_FILE="${RUNNER_TEMP}/veracode-applications-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
-
+    
         MAX_RETRIES=5
         RETRY_WAIT=30
         RETRY_COUNT=0
-
+    
         while true; do
           echo "[INFO] Consultando aplicación '$APP_NAME' en Veracode..."
           echo "[INFO] Intento $((RETRY_COUNT + 1)) de $((MAX_RETRIES + 1))"
-
+    
           set +e
           http \
             --check-status \
@@ -94,25 +94,25 @@ runs:
             > "$RESPONSE_FILE"
           HTTP_EXIT_CODE=$?
           set -e
-
+    
           if [[ "$HTTP_EXIT_CODE" -ne 0 ]]; then
             echo "::error::Falló la consulta a la API de Veracode (HTTPie exit code=$HTTP_EXIT_CODE)."
-
+    
             if jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
               jq . "$RESPONSE_FILE"
             else
               cat "$RESPONSE_FILE" || true
             fi
-
+    
             exit "$HTTP_EXIT_CODE"
           fi
-
+    
           if ! jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
             echo '::error::La API de Veracode devolvió una respuesta que no es JSON válido.'
             cat "$RESPONSE_FILE" || true
             exit 1
           fi
-
+    
           APP_COUNT="$(
             jq -r \
               --arg name "$APP_NAME" \
@@ -122,21 +122,21 @@ runs:
               ] | length' \
               "$RESPONSE_FILE"
           )"
-
+    
           if [[ "$APP_COUNT" -eq 0 ]]; then
             echo 'application-found=false' >> "$GITHUB_OUTPUT"
             echo 'policy-status=NONE' >> "$GITHUB_OUTPUT"
             echo "::error::No se encontró una aplicación con nombre exacto '$APP_NAME'."
             exit 1
           fi
-
+    
           if [[ "$APP_COUNT" -gt 1 ]]; then
             echo 'application-found=true' >> "$GITHUB_OUTPUT"
             echo 'policy-status=AMBIGUOUS' >> "$GITHUB_OUTPUT"
             echo "::error::Se encontró más de una aplicación con nombre exacto '$APP_NAME'."
             exit 1
           fi
-
+    
           STATUS="$(
             jq -r \
               --arg name "$APP_NAME" \
@@ -155,39 +155,38 @@ runs:
               ) // empty' \
               "$RESPONSE_FILE"
           )"
-
+    
           echo "Policy compliance de '$APP_NAME': ${STATUS:-<sin estado>}"
-
-          # Si todavía no fue evaluada, esperamos y volvemos a consultar.
-          if [[ "$STATUS" == "NOT_ASSESSED" && "$RETRY_COUNT" -lt "$MAX_RETRIES" ]]; then
+    
+          # Estados transitorios: reintentar
+          if [[ "$STATUS" =~ ^(NOT_ASSESSED|DETERMINING)$ && "$RETRY_COUNT" -lt "$MAX_RETRIES" ]]; then
             RETRY_COUNT=$((RETRY_COUNT + 1))
-
-            echo "::warning::Policy todavía en estado NOT_ASSESSED."
+    
+            echo "::warning::Policy todavía en estado transitorio ($STATUS)."
             echo "[INFO] Esperando ${RETRY_WAIT}s antes del reintento ${RETRY_COUNT}/${MAX_RETRIES}..."
-
+    
             sleep "$RETRY_WAIT"
             continue
           fi
-
-          # Para cualquier otro estado dejamos de consultar.
+    
           break
         done
-
+    
         echo 'application-found=true' >> "$GITHUB_OUTPUT"
         echo "policy-status=${STATUS:-NONE}" >> "$GITHUB_OUTPUT"
-
+    
         if [[ "$STATUS" != 'PASSED' ]]; then
           echo "::error::Veracode Policy no cumplida (status=${STATUS:-NONE}) -> despliegue bloqueado"
-
-          if [[ "$STATUS" == 'NOT_ASSESSED' ]]; then
-            echo "::error::La aplicación continúa en NOT_ASSESSED después de ${MAX_RETRIES} reintentos."
+    
+          if [[ "$STATUS" =~ ^(NOT_ASSESSED|DETERMINING)$ ]]; then
+            echo "::error::La aplicación continúa en estado transitorio (${STATUS}) después de ${MAX_RETRIES} reintentos."
           fi
-
+    
           if [[ -z "$STATUS" ]]; then
             echo '::warning::La aplicación existe, pero no se encontró policy_compliance_status.'
           fi
-
+    
           exit 1
         fi
-
+    
         echo "✅ Policy PASSED para '$APP_NAME' -> despliegue habilitado."

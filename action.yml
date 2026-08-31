@@ -1,4 +1,4 @@
-name: 'Despliegue y Sincronizacion con ArgoCD'
+name: 'Despliegue y Sincronizacion con ArgoCD de conjunto de satélites'
 
 inputs:
   ACR_USERNAME:
@@ -13,15 +13,6 @@ inputs:
   ACR_FULL_NAME:
     description: "nombre del acr con azurecr.io"
     required: true
-  appName:
-    description: "Nombre de la aplicacion (dentro del proyecto)"
-    required: true
-  teamProject:
-    description: "Nombre del proyecto/equipo"
-    required: true
-  appVersion:
-    description: "tag para subir imagen"
-    required: true
   ARGO_USERNAME:
     description: "usuario de ArgoCD"
     required: true
@@ -31,34 +22,16 @@ inputs:
   ARGO_URL:
     description: "url de ArgoCD"
     required: true
-  helmChartVersionLatest:
-    description: "VersionHelm"
-    required: true
-  namespace:
-    description: "nombre de namespaces"
-    required: false
-    default: ""
-  environment:
-    description: "nombre de environment"
-    required: false
-    default: ""
-#env:
-  #Es un valor que viene del secreto, pero el install de helm lo espera cmo variable 'plana'
-#  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
 runs:
   using: "composite"
   steps:
-      - run: echo hi!, we working.
+      - name: Obtener lista de satelites a desplegar
+        id: listaApps
         shell: bash
-      - name: Generate name
-        shell: bash
-        id: name
-        run: echo "applicationName=${{inputs.teamProject}}-${{inputs.appName}}-${{inputs.environment}}" >> $GITHUB_OUTPUT
-
-      - uses: actions/download-artifact@v6
-        with:
-          name: ${{inputs.appName}}-${{inputs.namespace}}
-          
+        run: |
+          echo 'Obteniendo lista de apps a desplegar'
+        # Por motivo de Testing esto está hardcodeado, luego se obtendrá el json desde una api.8        
 
         # Se intentan varias veces los pasos para evitar fallos si el ArgoCD no responde a tiempo
       - name: Login ArgoCD
@@ -89,159 +62,142 @@ runs:
               exit 1
           fi
 
-      - name: Create Project
+      - name: Create Projects and Apps
         shell: bash
         run: |
-          echo 'Creacion proyecto argocd'
-          variableOk=0
-          argoCommand="argocd proj get ${{inputs.namespace}}"
-          if eval "$argoCommand"; then
-            echo "El proyecto ya existe"
-            variableOk=1
-          else
-            echo "El proyecto no existe en ArgoCD, procediendo a crearlo"
-            argoCommand="argocd proj create ${{inputs.namespace}} --upsert --dest https://kubernetes.default.svc,${{inputs.namespace}} --src  ${{ inputs.ACR_FULL_NAME }}/helm --grpc-web"
+          LISTA_APPS='{"1":{"appName":"satelite1-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-1","helmChartVersionLatest":"1.0.0-1.prod","namespace":"devops-prod"},"2":{"appName":"satelite2-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-1","helmChartVersionLatest":"1.0.0-1.prod","namespace":"devops-prod"}}'
+          echo "$LISTA_APPS" | jq -r '.[] | "\(.appName)\t\(.teamProject)\t\(.environment)\t\(.appVersion)\t\(.helmChartVersionLatest)\t\(.namespace)"' | while IFS=$'\t' read -r appName teamProject environment appVersion helmChartVersionLatest namespace; do
+            applicationName=$teamProject-$appName-$environment
+            echo 'Creacion proyecto argocd'
+            variableOk=0
+            argoCommand="argocd proj get $namespace"
+            if eval "$argoCommand"; then
+              echo "El proyecto ya existe"
+              variableOk=1
+            else
+              echo "El proyecto no existe en ArgoCD, procediendo a crearlo"
+              argoCommand="argocd proj create $namespace --upsert --dest https://kubernetes.default.svc,$namespace --src  ${{ inputs.ACR_FULL_NAME }}/helm --grpc-web"
+              for i in {1..2}
+              do
+              if eval "$argoCommand"; then
+                  echo "ArgoCD Project create OK"
+                  variableOk=1
+                  break
+                 else
+                   echo "ArgoCD Project create $i/2"
+                   sleep 40
+                 fi
+              done
+            fi
+            if [[ $variableOk != "1" ]]
+            then
+                echo "Error en ArgoCD Project create" >&2;
+                exit 1
+            fi
+            echo 'creacion app argocd'
+            variableOk=0
+            argoCommand="argocd app create $applicationName --repo ${{ inputs.ACR_FULL_NAME }}/helm --helm-chart $teamProject-$appName --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision $helmChartVersionLatest --dest-namespace $namespace --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project $namespace --grpc-web"
+            
             for i in {1..2}
             do
             if eval "$argoCommand"; then
-                echo "ArgoCD Project create OK"
+                echo "ArgoCD app create OK"
                 variableOk=1
                 break
                else
-                 echo "ArgoCD Project create $i/2"
+                 echo "ArgoCD app create $i/2"
                  sleep 40
                fi
             done
-            if [[ ${{inputs.environment}} =~ "test" ]]; then
-              echo "El proyecto $NAMESPACE es de test, le ponemos la ventana de sincronización"
-              argocd proj windows add ${{inputs.namespace}} --kind deny --schedule "30 21 * * *" --duration 11h --applications "*"
-              argocd proj windows enable-manual-sync ${{inputs.namespace}} 0
+            if [[ $variableOk != "1" ]]
+            then
+                echo "Error en ArgoCD app create" >&2;
+                exit 1
             fi
-          fi
-          if [[ $variableOk != "1" ]]
-          then
-              echo "Error en ArgoCD Project create" >&2;
-              exit 1
-          fi
-      - name: creación app ArgoCD
-        shell: bash
-        run: |
-          echo 'creacion app argocd'
-          variableOk=0
-          argoCommand="argocd app create ${{ steps.name.outputs.applicationName }} --repo ${{ inputs.ACR_FULL_NAME }}/helm --helm-chart ${{inputs.teamProject}}-${{inputs.appName}} --upsert --helm-set Chart.yaml=Chart.yaml --helm-set-file values.yaml=values.yaml --helm-set-file Chart.yaml=Chart.yaml --revision ${{ inputs.helmChartVersionLatest}} --dest-namespace ${{inputs.namespace}} --dest-server https://kubernetes.default.svc --sync-policy auto --auto-prune --self-heal --project ${{inputs.namespace}} --grpc-web"
-          
-          for i in {1..2}
-          do
-          if eval "$argoCommand"; then
-              echo "ArgoCD app create OK"
-              variableOk=1
-              break
-             else
-               echo "ArgoCD app create $i/2"
-               sleep 40
-             fi
-          done
-          if [[ $variableOk != "1" ]]
-          then
-              echo "Error en ArgoCD app create" >&2;
-              exit 1
-          fi
-      - name: Wait Sync
-        shell: bash
-        run: |
-          #Wait. Espera la synchronizacion, esperan 40s, espera 2 veces
-          # validar el nombre, antes tenia el -qa al final
-          argoWait="argocd app wait ${{ steps.name.outputs.applicationName }} --health --operation --timeout 30"
-          for i in {1..2}
-          do
-          if eval "$argoWait"; then
-                echo "ArgoCD app wait OK"
-                break
+            #Wait. Espera la synchronizacion, esperan 40s, espera 2 veces
+            # validar el nombre, antes tenia el -qa al final
+            argoWait="argocd app wait $applicationName --health --operation --timeout 30"
+            for i in {1..2}
+            do
+            if eval "$argoWait"; then
+                  echo "ArgoCD app wait OK"
+                  break
+              else
+                  echo "ArgoCD app wait $i/2"
+                  sleep 40
+              fi
+            done
+            #Limpia cache de argocd - hard refresh
+            argoCommand="argocd app get $applicationName --hard-refresh --grpc-web"
+            if eval "$argoCommand"; then
+              echo "ArgoCD app Refresh OK"
             else
-                echo "ArgoCD app wait $i/2"
-                sleep 40
+              echo "ArgoCD app Refresh NO OK"
             fi
-          done
-      - name: Clear cache
-        shell: bash
-        continue-on-error: true
-        run: |
-          #Limpia cache de argocd - hard refresh
-          argocd app get ${{ steps.name.outputs.applicationName }} --hard-refresh --grpc-web
-
-          
-      - name: Sync
-        shell: bash
-        run: |
-          #Synch del repo (Fuerza el cambio de la aplicación a lo que se encuentra en los repos)
-          argoCommand="argocd app sync ${{ steps.name.outputs.applicationName }} --prune --force --retry-limit 5 --grpc-web --async"
-          variableOk=0
-          for i in {1..3}
-          do
-          if eval "$argoCommand"; then
-              echo "ArgoCD sync OK"
-              variableOk=1
-              break
-             else
-               echo "ArgoCD sync $i/3"
-               sleep 40
-             fi
-          done
-          if [[ $variableOk != "1" ]]
-          then
-              echo "Error en ArgoCD sync" >&2;
-              exit 1
-          fi
-
-      - name: Wait Sync
-        shell: bash
-        run: |
-          #Wait. Espera la synchronizacion, esperan 40s, esperan 3 veces
-          argoWait="argocd app wait ${{ steps.name.outputs.applicationName }} --health --operation --timeout 30"
-          for i in {1..2}
-          do
-          if eval "$argoWait"; then
-                echo "ArgoCD app wait OK"
+            #Synch del repo (Fuerza el cambio de la aplicación a lo que se encuentra en los repos)
+            argoCommand="argocd app sync $applicationName --prune --force --retry-limit 5 --grpc-web --async"
+            variableOk=0
+            for i in {1..3}
+            do
+            if eval "$argoCommand"; then
+                echo "ArgoCD sync OK"
+                variableOk=1
                 break
+               else
+                 echo "ArgoCD sync $i/3"
+                 sleep 40
+               fi
+            done
+            if [[ $variableOk != "1" ]]
+            then
+                echo "Error en ArgoCD sync" >&2;
+                exit 1
+            fi
+            #Wait. Espera la synchronizacion, esperan 40s, esperan 3 veces
+            argoWait="argocd app wait $applicationName --health --operation --timeout 30"
+            for i in {1..2}
+            do
+            if eval "$argoWait"; then
+                  echo "ArgoCD app wait OK"
+                  break
+              else
+                  echo "ArgoCD app wait $i/5"
+                  sleep 40
+              fi
+            done
+            MAX_ATTEMPTS=3
+            ATTEMPT=1
+            APP_NAME="$applicationName"
+        
+            while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
+              echo "🔍 Intento $ATTEMPT de $MAX_ATTEMPTS para corroborar estado de $APP_NAME..."
+        
+              OUTPUT=$(argocd app get "$APP_NAME")
+              APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
+              SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
+        
+              echo "➡️  Estado de salud: $APP_STATUS"
+              echo "➡️  Estado de sincronización: $SYNC_STATUS"
+        
+              if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
+                echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
+                exit 0
+              fi
+        
+              if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
+                echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."
+                sleep 60
+              fi
+              ((ATTEMPT++))
+            done
+            if [[ "$APP_STATUS" == "Healthy" ]]; then
+              echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
             else
-                echo "ArgoCD app wait $i/5"
-                sleep 40
+              echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
             fi
+            exit 1
           done
-          
-      - name: Check ArgoCD Application Status
-        shell: bash
-        run: |
-          MAX_ATTEMPTS=3
-          ATTEMPT=1
-          APP_NAME="${{ steps.name.outputs.applicationName }}"
-      
-          while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
-            echo "🔍 Intento $ATTEMPT de $MAX_ATTEMPTS para corroborar estado de $APP_NAME..."
-      
-            OUTPUT=$(argocd app get "$APP_NAME")
-            APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
-            SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
-      
-            echo "➡️  Estado de salud: $APP_STATUS"
-            echo "➡️  Estado de sincronización: $SYNC_STATUS"
-      
-            if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
-              echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
-              exit 0
-            fi
-      
-            if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
-              echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."
-              sleep 60
-            fi
-            ((ATTEMPT++))
-          done
-          if [[ "$APP_STATUS" == "Healthy" ]]; then
-            echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
-          else
-            echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
-          fi
-          exit 1
+
+
 
 

@@ -65,18 +65,6 @@ inputs:
   GITHUB_HELMREPO_TOKEN:
     description: "Token para descargar el codigo de templates HELM"
     required: true
-  APPS_CERTIFICATE:
-    description: "Certificado para el dominio de apps en ARO"
-    required: false
-    default: ""
-  APPS_CA_CERTIFICATE:
-    description: "Certificado de la CA"
-    required: false
-    default: ""
-  APPS_KEY_CERTIFICATE:
-    description: "Certificado ARO Key"
-    required: false
-    default: ""
 
   # HELM
   helmChartVersionLatest:
@@ -198,24 +186,17 @@ runs:
           ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
           ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
           ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          
-      - name: Argo deploy 🚀
-        id: argo
-        uses: infrastructure-services/continuos-deployment@sync-argo
-        with:
-          appName: ${{ inputs.appName }}
-          teamProject: ${{ inputs.teamProject }}
-          namespace: ${{ inputs.namespace }}
-          appVersion: ${{ inputs.appVersion }}
-          helmChartVersionLatest: ${{steps.helmversion.outputs.result}}
-          ACR_USERNAME: ${{ inputs.ACR_USERNAME }}
-          ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
-          ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
-          ACR_NAME: ${{ inputs.ACR_NAME }}
-          ARGO_USERNAME: ${{ inputs.ARGO_USERNAME }}
-          ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
-          ARGO_URL: ${{inputs.ARGO_URL}}
-          environment: ${{ inputs.environment }}
+      # En lugar de desplegar con Argo, simplemente se sucribe a la api
+      - name: Subscribe deploy 🚀
+        id: subscribe
+        shell: bash
+        run: |
+          echo "  appName: ${{ inputs.appName }}"
+          echo "  teamProject: ${{ inputs.teamProject }}"
+          echo "  namespace: ${{ inputs.namespace }}"
+          echo "  appVersion: ${{ inputs.appVersion }}"
+          echo "  helmChartVersionLatest: ${{steps.helmversion.outputs.result}}"
+          echo "  environment: ${{ inputs.environment }}"
           
       - name: Cleanup Artifact
         uses: geekyeggo/delete-artifact@v6

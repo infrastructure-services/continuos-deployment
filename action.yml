@@ -37,7 +37,6 @@ runs:
         shell: bash
         run: |-
           echo 'login a argocd'
-          echo '${{ inputs.ACR_PASSWORD }}' | helm registry login ${{ inputs.ACR_FULL_NAME }} --username ${{ inputs.ACR_USERNAME }} --password-stdin
           variableOk=0
           argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
           for i in {1..5}

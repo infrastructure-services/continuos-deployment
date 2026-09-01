@@ -169,6 +169,7 @@ runs:
               echo "➡️  Estado de sincronización: $SYNC_STATUS"
               if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
                 echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
+                break
               fi
               if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
                 echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."

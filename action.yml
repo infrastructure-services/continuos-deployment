@@ -1,6 +1,9 @@
 name: 'Despliegue y Sincronizacion con ArgoCD de conjunto de satélites'
 
 inputs:
+  LISTA_APPS:
+    description: "Lista de Apps a Desplegar"
+    required: true
   ACR_USERNAME:
     description: "user de acr"
     required: true
@@ -58,8 +61,10 @@ runs:
 
       - name: Create Projects and Apps
         shell: bash
+        env:
+          LISTA_APPS: ${{ inputs.LISTA_APPS }}
         run: |
-          LISTA_APPS='{"1":{"appName":"satelite1-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-1","helmChartVersionLatest":"1.0.0-1.prod","namespace":"devops-prod"},"2":{"appName":"satelite2-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-1","helmChartVersionLatest":"1.0.0-1.prod","namespace":"devops-prod"}}'
+          #LISTA_APPS='{"1":{"appName":"satelite1-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-2","helmChartVersionLatest":"1.0.0-2.prod","namespace":"devops-prod"},"2":{"appName":"satelite2-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-1","helmChartVersionLatest":"1.0.0-1.prod","namespace":"devops-prod"}}'
           echo "$LISTA_APPS" | jq -r '.[] | "\(.appName)\t\(.teamProject)\t\(.environment)\t\(.appVersion)\t\(.helmChartVersionLatest)\t\(.namespace)"' | while IFS=$'\t' read -r appName teamProject environment appVersion helmChartVersionLatest namespace; do
             applicationName=$teamProject-$appName-$environment
             echo "Desplegando $appName $teamProject $environment $appVersion $helmChartVersionLatest $namespace"

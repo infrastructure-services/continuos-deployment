@@ -95,30 +95,29 @@ runs:
             
             for i in {1..2}
             do
-            if eval "$argoCommand"; then
+              if eval "$argoCommand"; then
                 echo "ArgoCD app create OK"
                 variableOk=1
                 break
-               else
-                 echo "ArgoCD app create $i/2"
-                 sleep 40
-               fi
+              else
+                echo "ArgoCD app create $i/2"
+                sleep 40
+              fi
             done
             if [[ $variableOk != "1" ]]
             then
-                echo "Error en ArgoCD app create" >&2;
-                exit 1
+              echo "Error en ArgoCD app create" >&2;
             fi
             #Wait. Espera la synchronizacion, esperan 40s, espera 2 veces
             argoWait="argocd app wait $applicationName --health --operation --timeout 30"
             for i in {1..2}
             do
-            if eval "$argoWait"; then
-                  echo "ArgoCD app wait OK"
-                  break
+              if eval "$argoWait"; then
+                echo "ArgoCD app wait OK"
+                break
               else
-                  echo "ArgoCD app wait $i/2"
-                  sleep 40
+                echo "ArgoCD app wait $i/2"
+                sleep 40
               fi
             done
             #Limpia cache de argocd - hard refresh
@@ -133,30 +132,29 @@ runs:
             variableOk=0
             for i in {1..3}
             do
-            if eval "$argoCommand"; then
+              if eval "$argoCommand"; then
                 echo "ArgoCD sync OK"
                 variableOk=1
                 break
-               else
-                 echo "ArgoCD sync $i/3"
-                 sleep 40
-               fi
+              else
+                echo "ArgoCD sync $i/3"
+                sleep 40
+              fi
             done
             if [[ $variableOk != "1" ]]
             then
-                echo "Error en ArgoCD sync" >&2;
-                exit 1
+              echo "Error en ArgoCD sync" >&2;
             fi
             #Wait. Espera la synchronizacion, esperan 40s, esperan 3 veces
             argoWait="argocd app wait $applicationName --health --operation --timeout 30"
             for i in {1..2}
             do
-            if eval "$argoWait"; then
-                  echo "ArgoCD app wait OK"
-                  break
+              if eval "$argoWait"; then
+                echo "ArgoCD app wait OK"
+                break
               else
-                  echo "ArgoCD app wait $i/5"
-                  sleep 40
+                echo "ArgoCD app wait $i/5"
+                sleep 40
               fi
             done
             MAX_ATTEMPTS=3
@@ -171,7 +169,6 @@ runs:
               echo "➡️  Estado de sincronización: $SYNC_STATUS"
               if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
                 echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
-                exit 0
               fi
               if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
                 echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."
@@ -184,7 +181,6 @@ runs:
             else
               echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
             fi
-            exit 1
           done
 
 

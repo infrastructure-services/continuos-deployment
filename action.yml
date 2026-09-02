@@ -22,16 +22,20 @@ inputs:
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
+
   namespace:
     description: "Nombre de namespace"
     required: false
     default: ""
+
   teamProject:
     description: "Nombre del proyecto/equipo"
     required: true
+
   appVersion:
     description: "Tag para subir imagen"
     required: true
+
   helmChartVersionLatest:
     description: Versión del chart Helm
     required: true
@@ -40,31 +44,61 @@ runs:
   using: composite
 
   steps:
-    - run: echo 'Inicia el proceso'
+    #########################################################
+    # INIT
+    #########################################################
+
+    - name: Inicia el proceso
       shell: bash
-      
+      run: echo "Inicia el proceso de empaquetado Helm"
+
+
+    #########################################################
+    # HELM
+    #########################################################
+
     - name: Install Helm
       uses: azure/setup-helm@v5
       with:
-        version: v3.12.3 #Helm 13 tiene un bug
-      
+        version: v3.12.3
+
+
     - name: Reviso archivos y version helm
       shell: bash
-      run: |-
-          ls
-          helm version --short
+      run: |
+        set -euo pipefail
+
+        ls -la
+        helm version --short
+
+
+    #########################################################
+    # VALUES
+    #########################################################
 
     - name: Descargar artefacto de values
       uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.appName }}-${{ inputs.namespace }}
 
-  # Verifica helm por errores (deberia ser bloqueante). Revisar este paso con un Json para asegurar que esté correcto.
-    - name: Helm Lint 
+
+    #########################################################
+    # HELM LINT
+    #########################################################
+
+    - name: Helm Lint
       shell: bash
       run: |
         set -euo pipefail
-        helm lint --values values.yaml .
+
+        helm lint \
+          --values values.yaml \
+          .
+
+
+    #########################################################
+    # AWS CREDENTIALS
+    #########################################################
 
     - name: Configurar credenciales AWS
       uses: aws-actions/configure-aws-credentials@v6
@@ -73,56 +107,162 @@ runs:
         aws-secret-access-key: ${{ inputs.ECR_PASSWORD }}
         aws-region: ${{ inputs.AWS_REGION }}
 
+
+    #########################################################
+    # HELM PACKAGE + PUSH
+    #########################################################
+
     - name: Helm Package and Push to Private ECR
       shell: bash
       env:
         AWS_REGION: ${{ inputs.AWS_REGION }}
         ECR_FULLNAME: ${{ inputs.ECR_FULLNAME }}
-        REPOSITORY_NAME: ${{ inputs.teamProject }}-${{ inputs.appName }}
+
+        TEAM_PROJECT: ${{ inputs.teamProject }}
+        APP_NAME: ${{ inputs.appName }}
+
         HELM_VERSION: ${{ inputs.helmChartVersionLatest }}
         APP_VERSION: ${{ inputs.appVersion }}
+
       run: |
         set -euo pipefail
 
+        #####################################################
+        # GENERATE REPOSITORY INFORMATION
+        #####################################################
+
+        CHART_NAME="${TEAM_PROJECT}-${APP_NAME}"
+
+        HELM_NAMESPACE="helm"
+
+        HELM_REPOSITORY="${HELM_NAMESPACE}/${CHART_NAME}"
+
+        HELM_PUSH_URL="oci://${ECR_FULLNAME}/${HELM_NAMESPACE}"
+
+        echo "=========================================="
+        echo "Helm Package"
+        echo "=========================================="
+        echo "Chart name      : $CHART_NAME"
+        echo "Helm version    : $HELM_VERSION"
+        echo "App version     : $APP_VERSION"
+        echo "ECR registry    : $ECR_FULLNAME"
+        echo "ECR repository  : $HELM_REPOSITORY"
+        echo "Helm push URL   : $HELM_PUSH_URL"
+        echo "=========================================="
+
+
+        #####################################################
+        # AWS IDENTITY
+        #####################################################
+
         echo "Identidad AWS:"
+
         aws sts get-caller-identity
 
-        echo "Validando repositorio privado: $REPOSITORY_NAME"
+
+        #####################################################
+        # ENSURE HELM ECR REPOSITORY EXISTS
+        #####################################################
+
+        echo "Validando repositorio Helm:"
+        echo "$HELM_REPOSITORY"
 
         if aws ecr describe-repositories \
-          --repository-names "$REPOSITORY_NAME" \
-          --region "$AWS_REGION" >/dev/null 2>&1; then
-          echo "Repositorio privado existente."
+          --repository-names "$HELM_REPOSITORY" \
+          --region "$AWS_REGION" \
+          >/dev/null 2>&1; then
+
+          echo "Repositorio Helm existente: $HELM_REPOSITORY"
+
         else
-          echo "Creando repositorio privado."
+
+          echo "Repositorio Helm no existe."
+          echo "Creando: $HELM_REPOSITORY"
+
           aws ecr create-repository \
-            --repository-name "$REPOSITORY_NAME" \
+            --repository-name "$HELM_REPOSITORY" \
             --region "$AWS_REGION" \
-            --image-scanning-configuration scanOnPush=true
+            --image-scanning-configuration scanOnPush=true \
+            >/dev/null
+
+          echo "Repositorio Helm creado correctamente"
+
         fi
 
+
+        #####################################################
+        # LOGIN PRIVATE ECR
+        #####################################################
+
         echo "Login en ECR privado: $ECR_FULLNAME"
-        aws ecr get-login-password --region "$AWS_REGION" |
+
+        aws ecr get-login-password \
+          --region "$AWS_REGION" |
           helm registry login \
             "$ECR_FULLNAME" \
             --username AWS \
             --password-stdin
 
+
+        #####################################################
+        # HELM PACKAGE
+        #####################################################
+
         PACKAGE_DIR="$(mktemp -d)"
+
+        echo "Empaquetando Helm chart..."
 
         helm package . \
           --destination "$PACKAGE_DIR" \
           --version "$HELM_VERSION" \
           --app-version "$APP_VERSION"
 
-        CHART_PACKAGE="$(find "$PACKAGE_DIR" -maxdepth 1 -name '*.tgz' -type f -print -quit)"
+
+        #####################################################
+        # FIND PACKAGE
+        #####################################################
+
+        CHART_PACKAGE="$(find \
+          "$PACKAGE_DIR" \
+          -maxdepth 1 \
+          -name '*.tgz' \
+          -type f \
+          -print \
+          -quit)"
 
         if [[ -z "$CHART_PACKAGE" ]]; then
-          echo "ERROR: no se generó ningún paquete Helm .tgz"
+
+          echo "::error::No se generó ningún paquete Helm .tgz"
           exit 1
+
         fi
 
-        echo "Publicando chart: $CHART_PACKAGE"
-        echo "Destino: oci://$ECR_FULLNAME/helm"
+        echo "Paquete generado:"
+        echo "$CHART_PACKAGE"
 
-        helm push "$CHART_PACKAGE" "oci://$ECR_FULLNAME/helm"
+
+        #####################################################
+        # HELM PUSH
+        #####################################################
+
+        echo "Publicando chart..."
+        echo "Package: $CHART_PACKAGE"
+        echo "Destino: $HELM_PUSH_URL"
+
+        helm push \
+          "$CHART_PACKAGE" \
+          "$HELM_PUSH_URL"
+
+        echo "::notice::Helm Chart publicado: ${HELM_REPOSITORY}:${HELM_VERSION}"
+
+
+        #####################################################
+        # FINISH
+        #####################################################
+
+        echo "=========================================="
+        echo "✅ Helm Chart publicado correctamente"
+        echo "=========================================="
+        echo "Repository : $HELM_REPOSITORY"
+        echo "Version    : $HELM_VERSION"
+        echo "=========================================="

@@ -1,123 +1,282 @@
-name: 'Generate Release'
-description: 'Action to generate release after a successful deploy to prod'
+name: "Generate Release"
+
+description: "Action to generate release after a successful deploy to prod"
+
 inputs:
-  # ACR
-  ACR_USERNAME:
-    description: "user de acr"
-    required: true
-  ACR_PASSWORD:
-    description: "passwrd de acr"
-    required: true
-  ACR_NAME:
-    description: "nommbre del acr"
-    required: true
-  ACR_FULL_NAME:
-    description: "nombre del acr con azurecr.io"
+  #########################################################
+  # AWS ECR
+  #########################################################
+
+  ECR_ID:
+    description: "AWS Access Key ID"
     required: true
 
-  # App
+  ECR_PASSWORD:
+    description: "AWS Secret Access Key"
+    required: true
+
+  awsRegion:
+    description: "Región de AWS"
+    required: false
+    default: "us-east-1"
+
+  #########################################################
+  # APP
+  #########################################################
+
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
+
   teamProject:
     description: "Nombre del proyecto/equipo"
     required: true
+
   appVersion:
-    description: "tag para subir imagen"
-    required: true
-  matrix_deploy:
-    description: "deploy en multiples ambientes"
-    required: false
-    default: "[]"
-    
-  # Values
-  github_token:
-    description: "Token para descargar el codigo de templates HELM"
+    description: "Tag de la imagen generada durante el build"
     required: true
 
-  #Jira Integration
+  matrix_deploy:
+    description: "Deploy en multiples aplicaciones"
+    required: false
+    default: "[]"
+
+  #########################################################
+  # GITHUB
+  #########################################################
+
+  github_token:
+    description: "GitHub Token"
+    required: true
+
+  #########################################################
+  # JIRA INTEGRATION
+  #########################################################
+
   jira_project_id:
-    description: Jira Project Id (e.g. "PE20"). This will be used as prefix in tickets
+    description: 'Jira Project Id (e.g. "PE20")'
     required: false
+
   jira_api_token:
-    description: Jira API Token
+    description: "Jira API Token"
     required: false
+
   jira_email:
-    description: Jira Email
+    description: "Jira Email"
     required: false
-#Futuras notificaciones
+
+  #########################################################
+  # FUTURAS NOTIFICACIONES
+  #########################################################
+
   webhook_url_teams:
-    description: Input para la URL del team en que se publica la notificacion
+    description: "URL del Team en que se publica la notificacion"
     required: false
     default: " "
 
+
 runs:
   using: "composite"
+
   steps:
+    #########################################################
+    # CHECKOUT
+    #########################################################
+
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
-    - name: Login to Azure Container Registry
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ inputs.ACR_NAME }}.azurecr.io 
-        username: ${{ inputs.ACR_USERNAME }}
-        password: ${{ inputs.ACR_PASSWORD }}
 
-    - name: Get the branch name
-      id: branch
-      run: echo "BranchName=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
-      shell: bash
+    #########################################################
+    # SEMANTIC BRANCH
+    #########################################################
 
-    - name: Use the branch name
+    - name: Configure semantic branches
       id: semanticBranches
-      run: | 
-        echo "The branch name is ${{ steps.branch.outputs.BranchName }}"
-        if [[ ${{ steps.branch.outputs.BranchName }} == "main" ]]; then
-          echo "configureBranch=[\"main\"]" >> $GITHUB_OUTPUT
-        else
-          echo "configureBranch=[\"main\", {\"name\": \"${{ steps.branch.outputs.BranchName }}\", \"prerelease\": \"${{ steps.branch.outputs.BranchName }}\" }]" >> $GITHUB_OUTPUT
-        fi
       shell: bash
+      env:
+        BRANCH_NAME: ${{ github.ref_name }}
+      run: |
+        set -euo pipefail
 
-    - name: 📑Jira integration
+        echo "The branch name is $BRANCH_NAME"
+
+        if [[ "$BRANCH_NAME" == "main" ]]; then
+          echo 'configureBranch=["main"]' >> "$GITHUB_OUTPUT"
+        else
+          echo "configureBranch=[\"main\", {\"name\": \"$BRANCH_NAME\", \"prerelease\": \"$BRANCH_NAME\" }]" >> "$GITHUB_OUTPUT"
+        fi
+
+
+    #########################################################
+    # JIRA + GENERATE RELEASE VERSION
+    #########################################################
+
+    - name: 📑 Jira integration
       id: version
       uses: architecture-it/actions@next-version
       with:
         github_token: ${{ inputs.github_token }}
-        only_version: 'false'
+
+        only_version: "false"
+
+        jira_email: ${{ inputs.jira_email }}
+        jira_project_id: ${{ inputs.jira_project_id }}
+        jira_api_token: ${{ inputs.jira_api_token }}
+
         jira_release_name: ${{ inputs.teamProject }}-${{ inputs.appName }}
+
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
 
-    - name: "Pull-Tag-Push imagen"
-      if: steps.version.outputs.new-version != ''
+
+    #########################################################
+    # AWS CREDENTIALS
+    #########################################################
+
+    - name: Configure AWS Credentials
+      if: ${{ steps.version.outputs.new-version != '' }}
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        aws-access-key-id: ${{ inputs.ECR_ID }}
+        aws-secret-access-key: ${{ inputs.ECR_PASSWORD }}
+        aws-region: ${{ inputs.awsRegion }}
+
+
+    #########################################################
+    # LOGIN ECR
+    #########################################################
+
+    - name: Login to Amazon ECR
+      if: ${{ steps.version.outputs.new-version != '' }}
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+
+    #########################################################
+    # PULL + TAG + PUSH
+    #########################################################
+
+    - name: Pull-Tag-Push imagen
+      if: ${{ steps.version.outputs.new-version != '' }}
       id: pullImage
+      shell: bash
+      env:
+        REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+
+        TEAM_PROJECT: ${{ inputs.teamProject }}
+        APP_NAME: ${{ inputs.appName }}
+
+        APP_VERSION: ${{ inputs.appVersion }}
+        NEW_VERSION: ${{ steps.version.outputs.new-version }}
+
+        MATRIX_DEPLOY: ${{ inputs.matrix_deploy }}
       run: |
-        echo "Pull imagen"
-        echo "::notice::Version Latest: ${{ steps.version.outputs.new-version }}"
+        set -euo pipefail
 
-        IFS=',' read -r -a deployments <<< "${{ inputs.matrix_deploy }}"
-        # Limpia y prepara el array de aplicaciones
-        deployments=($(for deployment in "${deployments[@]}"; do echo "$deployment" | xargs | sed 's/[][]//g'; done))
-        
-        if [ ${#deployments[@]} -eq 0 ]; then
-          # Ejecuta los comandos una sola vez si no hay aplicaciones especificadas
-          docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}}
-          docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
-          docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}
-          echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}:${{ steps.version.outputs.new-version }}"
+        echo "=========================================="
+        echo "Generando Release"
+        echo "=========================================="
+        echo "Version build  : $APP_VERSION"
+        echo "Version release: $NEW_VERSION"
+        echo "Registry       : $REGISTRY"
+        echo "=========================================="
+
+        IFS=',' read -r -a deployments <<< "$MATRIX_DEPLOY"
+
+        deployments=($(for deployment in "${deployments[@]}"; do
+          echo "$deployment" | xargs | sed 's/[][]//g'
+        done))
+
+
+        #####################################################
+        # SINGLE APPLICATION
+        #####################################################
+
+        if [[ ${#deployments[@]} -eq 0 ]]; then
+
+          REPOSITORY_NAME="${TEAM_PROJECT}-${APP_NAME}"
+
+          SOURCE_IMAGE="${REGISTRY}/${REPOSITORY_NAME}:${APP_VERSION}"
+          RELEASE_IMAGE="${REGISTRY}/${REPOSITORY_NAME}:${NEW_VERSION}"
+
+          echo "Imagen origen:"
+          echo "$SOURCE_IMAGE"
+
+          echo "Imagen release:"
+          echo "$RELEASE_IMAGE"
+
+          echo "Pull image..."
+
+          docker pull "$SOURCE_IMAGE"
+
+          echo "Tag image..."
+
+          docker tag \
+            "$SOURCE_IMAGE" \
+            "$RELEASE_IMAGE"
+
+          echo "Push release image..."
+
+          docker push "$RELEASE_IMAGE"
+
+          echo "::notice::Image name: $RELEASE_IMAGE"
+
+
+        #####################################################
+        # MULTIPLE APPLICATIONS
+        #####################################################
+
         else
-          # Ejecuta los comandos para cada aplicación si hay aplicaciones especificadas
-          for deployment in "${deployments[@]}"; do
-            docker pull ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ inputs.appVersion}}
-            docker tag ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ inputs.appVersion}} ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}
-            docker push ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}
-            echo "::notice::Image name: ${{ inputs.ACR_FULL_NAME }}/${{inputs.teamProject}}-${{inputs.appName}}-$deployment:${{ steps.version.outputs.new-version }}"
-          done
-        fi
-      shell: bash
-    - run: echo "✅ Success"
-      shell: bash
 
+          for deployment in "${deployments[@]}"; do
+
+            REPOSITORY_NAME="${TEAM_PROJECT}-${APP_NAME}-${deployment}"
+
+            SOURCE_IMAGE="${REGISTRY}/${REPOSITORY_NAME}:${APP_VERSION}"
+            RELEASE_IMAGE="${REGISTRY}/${REPOSITORY_NAME}:${NEW_VERSION}"
+
+            echo "------------------------------------------"
+            echo "Deployment: $deployment"
+            echo "Imagen origen : $SOURCE_IMAGE"
+            echo "Imagen release: $RELEASE_IMAGE"
+            echo "------------------------------------------"
+
+            echo "Pull image..."
+
+            docker pull "$SOURCE_IMAGE"
+
+            echo "Tag image..."
+
+            docker tag \
+              "$SOURCE_IMAGE" \
+              "$RELEASE_IMAGE"
+
+            echo "Push release image..."
+
+            docker push "$RELEASE_IMAGE"
+
+            echo "::notice::Image name: $RELEASE_IMAGE"
+
+          done
+
+        fi
+
+
+    #########################################################
+    # FINISH
+    #########################################################
+
+    - name: Finish
+      shell: bash
+      env:
+        APP_VERSION: ${{ inputs.appVersion }}
+        NEW_VERSION: ${{ steps.version.outputs.new-version }}
+      run: |
+        echo "=========================================="
+        echo "✅ Release completado correctamente"
+        echo "=========================================="
+        echo "Version Build   : $APP_VERSION"
+        echo "Version Release : $NEW_VERSION"
+        echo "=========================================="

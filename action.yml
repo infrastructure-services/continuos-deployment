@@ -20,22 +20,18 @@ inputs:
     default: us-east-1
 
   appName:
-    description: Nombre de la aplicación
+    description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
-
   namespace:
-    description: Nombre del namespace
+    description: "Nombre de namespace"
     required: false
     default: ""
-
   teamProject:
-    description: Nombre del proyecto/equipo
+    description: "Nombre del proyecto/equipo"
     required: true
-
   appVersion:
-    description: Tag de la imagen
+    description: "Tag para subir imagen"
     required: true
-
   helmChartVersionLatest:
     description: Versión del chart Helm
     required: true
@@ -44,34 +40,34 @@ runs:
   using: composite
 
   steps:
-    - name: Inicia el proceso
+    - run: echo 'Inicia el proceso'
       shell: bash
-      run: echo "Inicia el proceso de empaquetado Helm"
-
+      
     - name: Install Helm
-      uses: azure/setup-helm@v3
+      uses: azure/setup-helm@v5
       with:
-        version: v3.12.3
-
-    - name: Revisar archivos y versión Helm
+        version: v3.12.3 #Helm 13 tiene un bug
+      
+    - name: Reviso archivos y version helm
       shell: bash
-      run: |
-        ls -la
-        helm version --short
+      run: |-
+          ls
+          helm version --short
 
     - name: Descargar artefacto de values
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.appName }}-${{ inputs.namespace }}
 
-    - name: Helm lint
+  # Verifica helm por errores (deberia ser bloqueante). Revisar este paso con un Json para asegurar que esté correcto.
+    - name: Helm Lint 
       shell: bash
       run: |
         set -euo pipefail
         helm lint --values values.yaml .
 
     - name: Configurar credenciales AWS
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.ECR_ID }}
         aws-secret-access-key: ${{ inputs.ECR_PASSWORD }}
@@ -127,6 +123,6 @@ runs:
         fi
 
         echo "Publicando chart: $CHART_PACKAGE"
-        echo "Destino: oci://$ECR_FULLNAME"
+        echo "Destino: oci://$ECR_FULLNAME/helm"
 
-        helm push "$CHART_PACKAGE" "oci://$ECR_FULLNAME"
+        helm push "$CHART_PACKAGE" "oci://$ECR_FULLNAME/helm"

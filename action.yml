@@ -49,15 +49,15 @@ inputs:
   memLimit:
     description: "Limite de Memoria del Pod"
     required: false
-    default: "4Gi"
+    default: "1Gi"
   cpuRequest:
     description: "Request de CPU del pod"
     required: false
-    default: "150m"
+    default: "20m"
   memRequest:
     description: "Request de Memoria del Pod"
     required: false
-    default: "200Mi"
+    default: "150Mi"
   fileValuesPath:
     description: "path archivo de values.yaml"
     required: true
@@ -121,7 +121,7 @@ runs:
           echo "url=https://${{ inputs.appName }}${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
 
       - name: Generate helm version
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: helmversion
         with:
           script: |
@@ -181,4 +181,9 @@ runs:
           ARGO_PASSWORD: ${{ inputs.ARGO_PASSWORD }}
           ARGO_URL: ${{inputs.ARGO_URL}}
           environment: ${{ inputs.environment }}
+          
+      - name: Cleanup Artifact
+        uses: geekyeggo/delete-artifact@v6
+        with:
+          name: ${{inputs.appName}}-${{inputs.namespace}}
 

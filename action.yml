@@ -56,14 +56,17 @@ inputs:
   jira_project_id:
     description: 'Jira Project Id (e.g. "PE20")'
     required: false
+    default: " "
 
   jira_api_token:
     description: "Jira API Token"
     required: false
+    default: " "
 
   jira_email:
     description: "Jira Email"
     required: false
+    default: " "
 
   #########################################################
   # FUTURAS NOTIFICACIONES
@@ -73,7 +76,6 @@ inputs:
     description: "URL del Team en que se publica la notificacion"
     required: false
     default: " "
-
 
 runs:
   using: "composite"
@@ -114,22 +116,14 @@ runs:
     # JIRA + GENERATE RELEASE VERSION
     #########################################################
 
-    - name: 📑 Jira integration
+    - name: 📑Jira integration
       id: version
       uses: architecture-it/actions@next-version
       with:
         github_token: ${{ inputs.github_token }}
-
-        only_version: "false"
-
-        jira_email: ${{ inputs.jira_email }}
-        jira_project_id: ${{ inputs.jira_project_id }}
-        jira_api_token: ${{ inputs.jira_api_token }}
-
+        only_version: 'false'
         jira_release_name: ${{ inputs.teamProject }}-${{ inputs.appName }}
-
         branches: ${{ steps.semanticBranches.outputs.configureBranch }}
-
 
     #########################################################
     # AWS CREDENTIALS

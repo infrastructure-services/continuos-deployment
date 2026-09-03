@@ -121,7 +121,7 @@ runs:
           echo "url=https://${{ inputs.appName }}${{ inputs.clusterFqdn }}" >> $GITHUB_OUTPUT
 
       - name: Generate helm version
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         id: helmversion
         with:
           script: |

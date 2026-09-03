@@ -58,11 +58,6 @@ runs:
       - name: Login ArgoCD y Helm Registry
         shell: bash
         run: |-
-          export PATH="/usr/local/bin:$PATH"
-          # El usuario para ECR OCI siempre debe ser 'AWS'
-          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
-          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
-          aws ecr get-login-password --region us-east-1 | helm registry login ${{inputs.ECR_FULLNAME }} --username AWS --password-stdin
           echo 'login a argocd'
           variableOk=0
           argoCommand="argocd login --username ${{ inputs.ARGO_USERNAME }} --password ${{ inputs.ARGO_PASSWORD }} --insecure ${{ inputs.ARGO_URL }} --grpc-web --skip-test-tls"
@@ -82,13 +77,6 @@ runs:
               echo "Error en ArgoCD Login" >&2;
               exit 1
           fi
-      - name: Inyectar Secreto de ECR en AKS para ArgoCD
-        shell: bash
-        run: |
-          export PATH="/usr/local/bin:$PATH"
-          aws configure set aws_access_key_id ${{ inputs.ECR_ID }}
-          aws configure set aws_secret_access_key ${{ inputs.ECR_PASSWORD }}
-          TOKEN=$(aws ecr get-login-password --region us-east-1)
               
       - name: Create Project
         shell: bash

@@ -160,19 +160,27 @@ runs:
 
         # 🚀 Agregás tu sección "env_default"
         echo 'env_default:' >> values.yaml
+        #Variables de activación
         echo '  ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
+        echo '  ElasticApm__Enabled: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
         echo '  ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml
         echo '  REACT_APP_DISABLE_APM: ${{ inputs.REACT_APP_DISABLE_APM }}' >> values.yaml
         echo '  NEXT_PUBLIC_DISABLE_APM: ${{ inputs.NEXT_PUBLIC_DISABLE_APM }}' >> values.yaml
-        echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
-        echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  Observability__ServerUrl: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ACTIVE: ${{ inputs.ELASTIC_APM_ACTIVE }}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_ENABLED: ${{ inputs.ELASTIC_APM_ENABLED }}' >> values.yaml
+
+        #Server URL
+        echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
+        echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
+        echo '  Observability__ServerUrl: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
+        echo '  ElasticApm__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
+
+        #Service NAME
+        echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  ElasticApm__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
 
     - name: Inject Azure Key Vault if exists
       shell: bash

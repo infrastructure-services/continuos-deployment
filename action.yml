@@ -127,7 +127,7 @@ runs:
             echo 'application-found=false' >> "$GITHUB_OUTPUT"
             echo 'policy-status=NONE' >> "$GITHUB_OUTPUT"
             echo "::error::No se encontró una aplicación con nombre exacto '$APP_NAME'."
-            exit 0
+            exit 1
           fi
     
           if [[ "$APP_COUNT" -gt 1 ]]; then

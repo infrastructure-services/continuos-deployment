@@ -55,7 +55,7 @@ runs:
     - name: Validate Veracode
       continue-on-error: ${{ inputs.nolocking == 'true' }}
       if: ${{ inputs.workflow == '.NET' || inputs.workflow == '.NET 8' || inputs.workflow == '.NET 10' }}
-      uses: infrastructure-services/continuos-deployment@validate-pre-prod-veracode
+      uses: infrastructure-services/continuos-deployment@validate-pre-prod-security
       with:
         app-name: ${{ inputs.app-name}}
         veracode-api-id: ${{ inputs.veracode-api-id }}

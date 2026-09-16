@@ -173,11 +173,29 @@ runs:
         echo '  ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  Observability__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  Observability__ServerUrl: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
-        echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
         echo '  ElasticApm__ServerUrls: "${{inputs.APM_SERVER_URL}}"' >> values.yaml
+        namespace="${{ inputs.namespace }}"
+        case "${namespace##*-}" in
+          test)
+            echo "Inyectamos configuración para Test"
+            echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "https://apm-mon-test.andreani.com"' >> values.yaml
+            echo '  NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: "https://apm-mon-test.andreani.com"' >> values.yaml
+            ;;
+          qa)
+            echo "Inyectamos configuración para QA"
+            echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "https://apm-mon-test.andreani.com"' >> values.yaml
+            echo '  NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: "https://apm-mon-test.andreani.com"' >> values.yaml
+            ;;
+          *)
+            echo "Inyectamos configuración para PROD"
+            echo '  REACT_APP_ELASTIC_APM_SERVER_URL: "https://apm-mon.andreani.com"' >> values.yaml
+            echo '  NEXT_PUBLIC_ELASTIC_APM_SERVER_URL: "https://apm-mon.andreani.com"' >> values.yaml
+            ;;
+        esac
 
         #Service NAME
         echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  NEXT_PUBLIC_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  ElasticApm__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml

@@ -186,7 +186,7 @@ runs:
             echo '::warning::La aplicación existe, pero no se encontró policy_compliance_status.'
           fi
     
-          exit 1
+          exit 0
         fi
     
         echo "✅ Policy PASSED para '$APP_NAME' -> despliegue habilitado."

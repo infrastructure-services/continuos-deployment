@@ -120,7 +120,12 @@ outputs:
   url_environment:
     description: "URL del environment"
     value: ${{ steps.setOutputs.outputs.url }}
-
+  manifestId:
+    description: "Ide del manifiesto generado"
+    value: ${{ steps.register.outputs.manifestId }}
+  coreVersion:
+    description: "Id de la versión de Core a la que subscribe"
+    value: ${{ steps.register.outputs.coreVersion }}
 runs:
   using: "composite"
   steps:
@@ -187,8 +192,65 @@ runs:
           ACR_PASSWORD: ${{ inputs.ACR_PASSWORD }}
           ACR_FULL_NAME: ${{ inputs.ACR_FULL_NAME }}
       # En lugar de desplegar con Argo, simplemente se sucribe a la api
-      - name: Subscribe deploy 🚀
-        id: subscribe
+      - name: Register coordinated release
+        id: register
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          body=$(jq -n \
+            --arg version "${{ inputs.appVersion }}" \
+            --arg environment "prod" \
+            --arg namespace "${{ inputs.namespace }}" \
+            --arg cluster "aks-prod-br" \
+            --arg chartVersion "${{steps.helmversion.outputs.result}}" \
+            --arg commitSHA "${{ github.sha }}" \
+            --arg addedBy "${{ github.actor }}" \
+            '{version: $version, environment: $environment, namespace: $namespace, cluster: $cluster, chartVersion: $chartVersion, commitSHA: $commitSHA, addedBy: $addedBy}')
+
+          set +e
+          http_code=$(curl -sS -o body.json -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -H "X-GitHub-Actor: ${{ github.actor }}" \
+            -H "X-GitHub-Run-Id: ${{ github.run_id }}" \
+            # -H "X-Api-Key: ${{ secrets.DMS_DEPLOY_API_KEY }}" \
+            -X POST "https://control-satelites-dms-api-devops-test.apps.ocptest.andreani.com.ar/api/v1/satelites/${{ inputs.appId }}/releases" \
+            -d "$body")
+          curl_exit=$?
+          set -e
+
+          if [[ "$http_code" == "409" ]]; then
+            code=$(jq -r '.notifications[0].code // empty' body.json)
+            if [[ "$code" == "DMS-003" ]]; then
+              echo "No hay una core version Pending para release coordinado. Si se quiere desplegar para la actual usar workflow de Hotfix Deploy." >&2
+              cat body.json >&2
+              exit 1
+            fi
+          fi
+
+          if [[ $curl_exit -ne 0 || "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
+            echo "Error registrando release coordinado (HTTP $http_code)" >&2
+            cat body.json >&2
+            exit 1
+          fi
+
+          manifest_id=$(jq -r '.manifestId // .content.manifestId' body.json)
+          core_version=$(jq -r '.coreVersion // .content.coreVersion' body.json)
+
+          echo "manifestId=$manifest_id" >> "$GITHUB_OUTPUT"
+          echo "coreVersion=$core_version" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "## Release coordinado registrado"
+            echo "- ManifestId: ${{ steps.register.outputs.manifestId }}"
+            echo "- El satelite saldra con DMS Core ${{ steps.register.outputs.coreVersion }}"
+            echo "- Re-ejecutable: la API maneja idempotencia en target/chart/manifest"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Deploy Suscripto 🚀
+        id: infosubscribe
         shell: bash
         run: |
           echo "  appName: ${{ inputs.appName }}"

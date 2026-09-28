@@ -19,6 +19,9 @@ inputs:
   appName:
     description: "Nombre de la aplicacion (dentro del proyecto)"
     required: true
+  appId:
+    description: "Id de la aplicacion (dentro del proyecto)"
+    required: true
   teamProject:
     description: "Nombre del proyecto/equipo"
     required: true

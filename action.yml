@@ -216,7 +216,6 @@ runs:
             -H 'Content-Type: application/json' \
             -H "X-GitHub-Actor: ${{ github.actor }}" \
             -H "X-GitHub-Run-Id: ${{ github.run_id }}" \
-            # -H "X-Api-Key: ${{ secrets.DMS_DEPLOY_API_KEY }}" \
             -X POST "https://control-satelites-dms-api-devops-test.apps.ocptest.andreani.com.ar/api/v1/satelites/${{ inputs.appId }}/releases" \
             -d "$body")
           curl_exit=$?

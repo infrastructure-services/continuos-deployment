@@ -1,8 +1,8 @@
 name: 'Despliegue y Sincronizacion con ArgoCD de conjunto de satélites'
 
 inputs:
-  LISTA_APPS:
-    description: "Lista de Apps a Desplegar"
+  CORE_VERSION:
+    description: "Version de Core para desplegar"
     required: true
   ACR_USERNAME:
     description: "user de acr"
@@ -34,8 +34,27 @@ runs:
         shell: bash
         run: |
           echo 'Obteniendo lista de apps a desplegar'
-        # Por motivo de Testing esto está hardcodeado, luego se obtendrá el json desde una api.8        
-        # Se intentan varias veces los pasos para evitar fallos si el ArgoCD no responde a tiempo
+          set -euo pipefail
+
+          body=$(jq -n \
+            --arg requestedBy "${{ github.actor }}" \
+            --arg workflowRunId "${{ github.run_id }}" \
+            '{requestedBy: $requestedBy, workflowRunId: $workflowRunId}')
+
+          curl --fail-with-body -sS \
+            -H 'Content-Type: application/json' \
+            -H "X-GitHub-Actor: ${{ github.actor }}" \
+            -H "X-GitHub-Run-Id: ${{ github.run_id }}" \
+            -X POST "https://control-satelites-dms-api-devops-test.apps.ocptest.andreani.com.ar/api/v1/core-versions/${{ inputs.CORE_VERSION }}/deployments" \
+            -d "$body" \
+            -o body.json
+
+          # Normaliza si el host devuelve wrapper con `content`.
+          jq '.content // .' body.json > body.tmp.json
+          mv body.tmp.json body.json
+          echo "Muestro body.json para debug ------------------"
+          cat body.json
+          echo "echo body.json para debug ------------------"
       - name: Login ArgoCD
         shell: bash
         run: |-
@@ -61,10 +80,9 @@ runs:
 
       - name: Create Projects and Apps
         shell: bash
-        env:
-          LISTA_APPS: ${{ inputs.LISTA_APPS }}
         run: |
-          #LISTA_APPS='{"1":{"appName":"satelite1-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-2","helmChartVersionLatest":"1.0.0-2.prod","namespace":"devops-prod"},"2":{"appName":"satelite2-api","teamProject":"devops","environment":"prod","appVersion":"1.0.0-1","helmChartVersionLatest":"1.0.0-1.prod","namespace":"devops-prod"}}'
+        
+          LISTA_APPS=$(cat body.json)
           echo "$LISTA_APPS" | jq -r '.[] | "\(.appName)\t\(.teamProject)\t\(.environment)\t\(.appVersion)\t\(.helmChartVersionLatest)\t\(.namespace)"' | while IFS=$'\t' read -r appName teamProject environment appVersion helmChartVersionLatest namespace; do
             applicationName=$teamProject-$appName-$environment
             echo "Desplegando $appName $teamProject $environment $appVersion $helmChartVersionLatest $namespace"

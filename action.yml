@@ -227,7 +227,7 @@ runs:
               status="Error"
               msg="Fallo deploy satelite $APP_NAME en run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               body=$(jq -n --arg status "$status" --arg errorMessage "$msg" '{status: $status, errorMessage: $errorMessage}')
-            else
+            elif [[ "$APP_OK" -eq 0 ]]; then
               echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del satélite ❌"
               status="Error"
               msg="Fallo deploy satelite $APP_NAME en run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -262,7 +262,7 @@ runs:
               exit 1
             fi
           done
-      - name: Build summary from latest manifests ###TODOOOOOO
+      - name: Build summary from latest manifests 
         shell: bash
         run: |
           set -euo pipefail
@@ -294,7 +294,8 @@ runs:
             exit 1
           fi
 
-          jq '.content // .' body.json > manifests.json
+          jq 'if type == "object" then (.content // .) else . end' body.json > manifests.json
+          # Normaliza si el host devuelve wrapper con `content`.
 
           {
             echo "## Resultado despliegue de satelites para core ${{ inputs.CORE_VERSION }}"

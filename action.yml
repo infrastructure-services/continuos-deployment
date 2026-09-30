@@ -41,13 +41,28 @@ runs:
             --arg workflowRunId "${{ github.run_id }}" \
             '{requestedBy: $requestedBy, workflowRunId: $workflowRunId}')
 
-          curl --fail-with-body -sS \
+          : > body.json
+
+          if http_code=$(curl -sS \
             -H 'Content-Type: application/json' \
             -H "X-GitHub-Actor: ${{ github.actor }}" \
             -H "X-GitHub-Run-Id: ${{ github.run_id }}" \
             -X POST "https://control-satelites-dms-api-devops-test.apps.ocptest.andreani.com.ar/api/v1/core-versions/${{ inputs.CORE_VERSION }}/deployments" \
             -d "$body" \
-            -o body.json
+            -o body.json \
+            -w '%{http_code}'); then
+
+            if [ "$http_code" -ge 400 ]; then
+              echo "La API respondió HTTP $http_code" >&2
+              cat body.json >&2
+              exit 1
+            fi
+          else
+            curl_status=$?
+            echo "curl falló con código $curl_status" >&2
+            [ ! -s body.json ] || cat body.json >&2
+            exit "$curl_status"
+          fi
 
           # Normaliza si el host devuelve wrapper con `content`.
           jq '.content // .' body.json > body.tmp.json
@@ -83,9 +98,11 @@ runs:
         run: |
         
           LISTA_APPS=$(cat body.json)
-          echo "$LISTA_APPS" | jq -r '.[] | "\(.appName)\t\(.teamProject)\t\(.environment)\t\(.appVersion)\t\(.helmChartVersionLatest)\t\(.namespace)"' | while IFS=$'\t' read -r appName teamProject environment appVersion helmChartVersionLatest namespace; do
+          #echo "$LISTA_APPS" | jq -r '.[] | "\(.appName)\t\(.teamProject)\t\(.environment)\t\(.appVersion)\t\(.helmChartVersionLatest)\t\(.namespace)"' | while IFS=$'\t' read -r appName teamProject environment appVersion helmChartVersionLatest namespace; do
+          echo "$LISTA_APPS" | jq -r 'to_entries[] | [.key, .value.appName, .value.teamProject, .value.environment, .value.appVersion, .value.helmChartVersionLatest, .value.namespace] | @tsv' | while IFS=$'\t' read -r deploymentId appName teamProject environment appVersion helmChartVersionLatest namespace; do
             applicationName=$teamProject-$appName-$environment
             echo "Desplegando $appName $teamProject $environment $appVersion $helmChartVersionLatest $namespace"
+            echo "Deployiment id $deploymentId"
             echo 'Creacion proyecto argocd'
             variableOk=0
             argoCommand="argocd proj get $namespace"
@@ -194,6 +211,9 @@ runs:
               if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
                 echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
                 APP_OK=1
+                status="Applied"
+                body=$(jq -n --arg status "$status" '{status: $status}')
+                #Código de patch de deployments exitosos
                 break
               fi
               if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
@@ -203,12 +223,86 @@ runs:
               ((ATTEMPT++))
             done
             if [[ "$APP_STATUS" == "Healthy" && "$APP_OK" -eq 0 ]]; then
-              echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
+              echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values del satélite o consultar con el equipo de DevOps"
+              status="Error"
+              msg="Fallo deploy satelite $APP_NAME en run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              body=$(jq -n --arg status "$status" --arg errorMessage "$msg" '{status: $status, errorMessage: $errorMessage}')
             else
-              echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
+              echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del satélite ❌"
+              status="Error"
+              msg="Fallo deploy satelite $APP_NAME en run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              body=$(jq -n --arg status "$status" --arg errorMessage "$msg" '{status: $status, errorMessage: $errorMessage}')
+            fi
+            #Reporto estado del despliegue
+            response_file=$(mktemp)
+            trap 'rm -f "$response_file"' EXIT
+
+            if http_code=$(curl -sS \
+              -H 'Content-Type: application/json' \
+              -H "X-GitHub-Actor: ${{ github.actor }}" \
+              -H "X-GitHub-Run-Id: ${{ github.run_id }}" \
+              -X PATCH "https://control-satelites-dms-api-devops-test.apps.ocptest.andreani.com.ar/api/v1/deployments/$deploymentId" \
+              -d "$body" \
+              -o "$response_file" \
+              -w '%{http_code}'); then
+              curl_status=0
+            else
+              curl_status=$?
+            fi
+
+            cat "$response_file"
+
+            if [ "$curl_status" -ne 0 ]; then
+              echo "curl falló con código $curl_status" >&2
+              exit "$curl_status"
+            fi
+
+            if [ "$http_code" -ge 400 ]; then
+              echo "La API respondió HTTP $http_code" >&2
+              exit 1
             fi
           done
+      - name: Build summary from latest manifests ###TODOOOOOO
+        shell: bash
+        run: |
+          set -euo pipefail
 
+          # Si necesitás usar X-Api-Key, agregá ese header dentro del comando curl.
+          : > body.json
+
+          if http_code=$(curl -sS \
+            -H 'Content-Type: application/json' \
+            -H "X-GitHub-Actor: ${{ github.actor }}" \
+            -H "X-GitHub-Run-Id: ${{ github.run_id }}" \
+            -X GET "https://control-satelites-dms-api-devops-test.apps.ocptest.andreani.com.ar/api/v1/core-versions/${{ inputs.CORE_VERSION }}/manifests?onlyLatest=true" \
+            -o body.json \
+            -w '%{http_code}'); then
+            curl_status=0
+          else
+            curl_status=$?
+          fi
+
+          if [ "$curl_status" -ne 0 ]; then
+            echo "curl falló con código $curl_status" >&2
+            [ ! -s body.json ] || cat body.json >&2
+            exit "$curl_status"
+          fi
+
+          if [ "$http_code" -ge 400 ]; then
+            echo "La API respondió HTTP $http_code" >&2
+            cat body.json >&2
+            exit 1
+          fi
+
+          jq '.content // .' body.json > manifests.json
+
+          {
+            echo "## Resultado despliegue de satelites para core ${{ inputs.CORE_VERSION }}"
+            echo ""
+            echo "| App | Version | Chart | Estado ultimo deployment | Aplicado |"
+            echo "|---|---|---|---|---|"
+            jq -r '.[] | "| \(.appName) | \(.appVersion) | \(.chartVersion) | \(.lastDeploymentStatus // "-") | \(.aplicado) |"' manifests.json
+          } >> "$GITHUB_STEP_SUMMARY"
 
 
 

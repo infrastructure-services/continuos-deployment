@@ -213,35 +213,57 @@ runs:
         shell: bash
         run: |
           MAX_ATTEMPTS=3
+          REQUIRED_CONSECUTIVE_HEALTHY=2
+          CHECK_INTERVAL_SECONDS=60
+
           ATTEMPT=1
+          CONSECUTIVE_HEALTHY=0
           APP_NAME="${{ steps.name.outputs.applicationName }}"
-      
-          while [[ $ATTEMPT -le $MAX_ATTEMPTS ]]; do
-            echo "🔍 Intento $ATTEMPT de $MAX_ATTEMPTS para corroborar estado de $APP_NAME..."
-      
-            OUTPUT=$(argocd app get "$APP_NAME")
-            APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
-            SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
-      
+
+          while [[ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]]; do
+            echo "🔍 Intento $ATTEMPT de $MAX_ATTEMPTS para corroborar el estado de $APP_NAME..."
+
+            if OUTPUT=$(argocd app get "$APP_NAME"); then
+              APP_STATUS=$(echo "$OUTPUT" | grep "Health Status" | awk '{print $NF}')
+              SYNC_STATUS=$(echo "$OUTPUT" | grep "Sync Status" | awk '{print $3}')
+            else
+              echo "⚠️ No se pudo consultar el estado de $APP_NAME en ArgoCD."
+              APP_STATUS="Unknown"
+              SYNC_STATUS="Unknown"
+            fi
+
             echo "➡️  Estado de salud: $APP_STATUS"
             echo "➡️  Estado de sincronización: $SYNC_STATUS"
-      
+
             if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
-              echo "::notice::✅ La aplicación $APP_NAME está Healthy y sincronizada con los cambios de este despliegue ✅"
-              exit 0
+              ((CONSECUTIVE_HEALTHY += 1))
+              echo "✅ Confirmación satisfactoria $CONSECUTIVE_HEALTHY de $REQUIRED_CONSECUTIVE_HEALTHY."
+
+              if [[ "$CONSECUTIVE_HEALTHY" -ge "$REQUIRED_CONSECUTIVE_HEALTHY" ]]; then
+                echo "::notice::✅ La aplicación $APP_NAME se desplegó correctamente ✅"
+                exit 0
+              fi
+            else
+              CONSECUTIVE_HEALTHY=0
+              echo "⏳ El estado no es Healthy y Synced; se reinicia el contador de confirmaciones."
             fi
-      
-            if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
-              echo "⏳ Estado aún no satisfactorio. Esperando 60 segundos antes del próximo intento..."
-              sleep 60
+
+            if [[ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]]; then
+              echo "⏳ Esperando $CHECK_INTERVAL_SECONDS segundos antes de la próxima comprobación..."
+              sleep "$CHECK_INTERVAL_SECONDS"
             fi
-            ((ATTEMPT++))
+
+            ATTEMPT=$((ATTEMPT + 1))
           done
-          if [[ "$APP_STATUS" == "Healthy" ]]; then
-            echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS )👎. Se recomienda revisar archivo values o consultar con el equipo de DevOps"
+
+          if [[ "$APP_STATUS" == "Healthy" && "$SYNC_STATUS" == "Synced" ]]; then
+            echo "::warning::⚠️ La aplicación $APP_NAME terminó Healthy y Synced, pero no se pudo confirmar ese estado en comprobaciones consecutivas."
+          elif [[ "$APP_STATUS" == "Healthy" ]]; then
+            echo "::warning::❌ 👎La aplicación $APP_NAME no quedó sincronizada con los cambios en este despliegue (Status: $SYNC_STATUS). Se recomienda revisar el archivo values o consultar con el equipo de DevOps."
           else
-            echo "::warning::❌ La aplicación $APP_NAME NO está Healthy ❌ (Estado actual: $APP_STATUS), probable crashloop, revisar los logs del pod ❌"
+            echo "::warning::❌ La aplicación $APP_NAME NO está Healthy (estado actual: $APP_STATUS); podría estar en crashloop. Revisar los logs del pod."
           fi
+
           exit 1
 
 

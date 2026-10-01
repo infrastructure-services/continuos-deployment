@@ -1,5 +1,5 @@
-name: "Build Android"
-description: "Unique step to Build Android"
+name: "Build iOS"
+description: "Unique step to Build iOS"
 inputs:
   # App
   appName:
@@ -28,24 +28,42 @@ inputs:
     description: "token github para autenticarse en packages"
     required: false
     default: ""
-  # Build Android
-  java_version: 
-    description: "version de java para build"
+  # Build iOS
+  xcode_version:
+    description: "version de Xcode a utilizar"
     required: false
-    default: "17"
-  command:
-    description: "comando a ejecutar la build"
+    default: "latest-stable"
+  scheme:
+    description: "scheme de Xcode a compilar"
+    required: true
+  workspace:
+    description: "workspace de Xcode (.xcworkspace) generado por CocoaPods"
     required: false
-    default: "./gradlew assembleRelease bundleRelease --no-daemon"
-  ANDROID_KEYSTORE_PASSWORD:
-    description: "password del keystore"
+    default: ""
+  project_path:
+    description: "ruta relativa a la carpeta ios"
+    required: false
+    default: "ios"
+  export_method:
+    description: "metodo de exportacion del ipa (app-store, ad-hoc, enterprise, development)"
+    required: false
+    default: "app-store"
+  IOS_CERTIFICATE_P12:
+    description: "certificado de firma (.p12) en base64"
     required: true
-  ANDROID_KEY_ALIAS:
-    description: "alias del keystore"
+  IOS_CERTIFICATE_PASSWORD:
+    description: "password del certificado .p12"
     required: true
-  ANDROID_KEYSTORE:
-    description: "keystore"
+  IOS_PROVISIONING_PROFILE:
+    description: "provisioning profile (.mobileprovision) en base64"
     required: true
+  IOS_TEAM_ID:
+    description: "Apple Developer Team ID"
+    required: true
+  KEYCHAIN_PASSWORD:
+    description: "password temporal para el keychain creado en el runner"
+    required: false
+    default: "temp-keychain-password"
 
 outputs:
   name_environment:
@@ -79,11 +97,10 @@ runs:
           echo "internal_name=${{ inputs.appName }}" >> $GITHUB_OUTPUT
         fi
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
+    - name: Select Xcode version
+      uses: maxim-lobanov/setup-xcode@v1
       with:
-        distribution: 'microsoft' # See 'Supported distributions' for available options
-        java-version: ${{ inputs.java_version }}
+        xcode-version: ${{ inputs.xcode_version }}
 
     - uses: architecture-it/actions@react-base-library
       with:
@@ -92,83 +109,130 @@ runs:
         packages_token: ${{ inputs.packages_token }}
         fontawesome_token: ${{ inputs.fontawesome_token }}
 
-    - name: Cache Gradle Wrapper
-      uses: actions/cache@v4
-      with:
-        path: ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+    - name: Install CocoaPods
+      shell: bash
+      run: gem install cocoapods
 
-    - name: Cache Gradle Dependencies
+    - name: Cache CocoaPods
       uses: actions/cache@v4
       with:
-        path: ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-caches-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+        path: ${{ inputs.project_path }}/Pods
+        key: ${{ runner.os }}-pods-${{ hashFiles(format('{0}/Podfile.lock', inputs.project_path)) }}
         restore-keys: |
-          ${{ runner.os }}-gradle-caches-
+          ${{ runner.os }}-pods-
+
+    - name: Pod Install
+      shell: bash
+      run: |
+        cd ${{ inputs.project_path }}
+        pod install --repo-update
+
+    - name: Import Code-Signing Certificates
+      shell: bash
+      env:
+        IOS_CERTIFICATE_P12: ${{ inputs.IOS_CERTIFICATE_P12 }}
+        IOS_CERTIFICATE_PASSWORD: ${{ inputs.IOS_CERTIFICATE_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ inputs.KEYCHAIN_PASSWORD }}
+      run: |
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+
+        echo -n "$IOS_CERTIFICATE_P12" | base64 --decode -o $CERTIFICATE_PATH
+
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        security import $CERTIFICATE_PATH -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+    - name: Install Provisioning Profile
+      shell: bash
+      env:
+        IOS_PROVISIONING_PROFILE: ${{ inputs.IOS_PROVISIONING_PROFILE }}
+      run: |
+        PROFILE_PATH=$RUNNER_TEMP/profile.mobileprovision
+        echo -n "$IOS_PROVISIONING_PROFILE" | base64 --decode -o $PROFILE_PATH
+
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PROFILE_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
     - name: Bump version
-      uses: chkfung/android-version-actions@v1.2.3
-      with:
-        gradlePath: android/app/build.gradle # or app/build.gradle.kts
-        versionName: ${{ inputs.appVersion }} 
-        versionCode: ${{ github.run_number }}
-
-    - name: Make Gradlew Executable
-      run: cd android && chmod +x ./gradlew
-      shell: bash
-
-    - name: Build Android Release
-      env:
-          ENVFILE: .env.${{ inputs.environment }}
-          APP_SUFFIX: ${{ inputs.environment }}
-          APP_NAME: ${{ steps.setOutputs.outputs.internal_name }}
-
       shell: bash
       run: |
-        cd android && ${{ inputs.command }}
-      
-    - run: cd android && ls -la app/build/outputs/apk/release
-      shell: bash
+        cd ${{ inputs.project_path }}
+        agvtool new-marketing-version ${{ inputs.appVersion }}
+        agvtool new-version -all ${{ github.run_number }}
 
-    - name: Setup build tool version variable
+    - name: Archive App
+      shell: bash
+      env:
+        ENVFILE: .env.${{ inputs.environment }}
+        APP_SUFFIX: ${{ inputs.environment }}
+        APP_NAME: ${{ steps.setOutputs.outputs.internal_name }}
+      run: |
+        cd ${{ inputs.project_path }}
+        WORKSPACE="${{ inputs.workspace }}"
+        if [ -z "$WORKSPACE" ]; then
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+        fi
+
+        xcodebuild archive \
+          -workspace "$WORKSPACE" \
+          -scheme "${{ inputs.scheme }}" \
+          -configuration Release \
+          -archivePath "$RUNNER_TEMP/app.xcarchive" \
+          -destination "generic/platform=iOS" \
+          DEVELOPMENT_TEAM="${{ inputs.IOS_TEAM_ID }}" \
+          CODE_SIGN_STYLE="Manual"
+
+    - name: Export IPA
       shell: bash
       run: |
-        BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
-        echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
-        echo Last build tool version is: $BUILD_TOOL_VERSION
+        cd ${{ inputs.project_path }}
+        cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>method</key>
+          <string>${{ inputs.export_method }}</string>
+          <key>teamID</key>
+          <string>${{ inputs.IOS_TEAM_ID }}</string>
+          <key>signingStyle</key>
+          <string>manual</string>
+          <key>compileBitcode</key>
+          <false/>
+        </dict>
+        </plist>
+        EOF
 
-    - name: Sign app APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app
-      with:
-        releaseDirectory: android/app/build/outputs/apk/release
-        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
-        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
-        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
-      env:
-        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
+        xcodebuild -exportArchive \
+          -archivePath "$RUNNER_TEMP/app.xcarchive" \
+          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+          -exportPath "$RUNNER_TEMP/export"
+
+    - name: Rename IPA
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.project_path }}/build/outputs/ipa
+        IPA_FILE=$(ls "$RUNNER_TEMP"/export/*.ipa | head -n 1)
+        cp "$IPA_FILE" ${{ inputs.project_path }}/build/outputs/ipa/app-release-signed.ipa
+
+    - run: cd ${{ inputs.project_path }}/build/outputs/ipa && ls -la
+      shell: bash
 
     # Upload to Artifact
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.setOutputs.outputs.artifact_name }}
-        path: ${{steps.sign_app.outputs.signedReleaseFile}}
-        
-    - name: Sign app APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app_aab
-      with:
-        releaseDirectory: android/app/build/outputs/bundle/release
-        signingKeyBase64: ${{ inputs.ANDROID_KEYSTORE }}
-        alias: ${{ inputs.ANDROID_KEY_ALIAS }}
-        keyStorePassword: ${{ inputs.ANDROID_KEYSTORE_PASSWORD }}
-      env:
-        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
+        path: ${{ inputs.project_path }}/build/outputs/ipa/app-release-signed.ipa
 
-    # Upload to Artifact
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.setOutputs.outputs.artifact_name }}.aab
-        path: ${{steps.sign_app_aab.outputs.signedReleaseFile}}
+    - name: Clean up Keychain and Provisioning Profile
+      if: always()
+      shell: bash
+      run: |
+        security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+        rm -f ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision || true

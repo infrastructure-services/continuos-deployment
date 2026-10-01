@@ -1,5 +1,5 @@
-name: "Publish to store Android"
-description: "Unique step to Publish to store Android"
+name: "Publish to store iOS"
+description: "Unique step to Publish to store iOS"
 inputs:
   # App
   appName:
@@ -27,11 +27,28 @@ inputs:
   filename:
     description: "nombre del archivo"
     required: false
-    default: "app-release-signed.apk"
+    default: "app-release-signed.ipa"
   gitOpsUrl:
     description: "Url de github-integration"
     required: false
     default: "https://github-integration-gitops-prod.apps.andreani.com.ar"
+  # TestFlight / App Store Connect
+  publish_to_app_store_connect:
+    description: "si es true, ademas publica el .ipa en App Store Connect (TestFlight / App Store)"
+    required: false
+    default: "false"
+  ASC_API_KEY:
+    description: "contenido del API Key (.p8) de App Store Connect en base64"
+    required: false
+    default: ""
+  ASC_API_KEY_ID:
+    description: "Key ID de App Store Connect"
+    required: false
+    default: ""
+  ASC_API_ISSUER_ID:
+    description: "Issuer ID de App Store Connect"
+    required: false
+    default: ""
 outputs:
   aplicacion_id:
     description: "aplicacion id"
@@ -54,7 +71,7 @@ runs:
           echo "name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
         fi
       shell: bash
-      
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -105,13 +122,30 @@ runs:
               -o response_body.txt)
 
         echo "API Response: $(<response_body.txt)"
-        
+
         # Extraer el status_code de la respuesta usando grep y sed
         #status_code=$(grep -o '"statusCode":[^,]*' response_body.txt | sed 's/[^0-9]*//g')
-        
+
         #if [ "$status_code" -eq 200 ]; then
         #  echo "statusCode: 200" >> $GITHUB_OUTPUT
         #else
         #  echo "Error: $response"
         #fi
       shell: bash
+
+    - name: Publish to App Store Connect (TestFlight / App Store)
+      if: ${{ inputs.publish_to_app_store_connect == 'true' }}
+      shell: bash
+      env:
+        ASC_API_KEY: ${{ inputs.ASC_API_KEY }}
+        ASC_API_KEY_ID: ${{ inputs.ASC_API_KEY_ID }}
+        ASC_API_ISSUER_ID: ${{ inputs.ASC_API_ISSUER_ID }}
+      run: |
+        mkdir -p ~/private_keys
+        echo -n "$ASC_API_KEY" | base64 --decode -o ~/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+
+        xcrun altool --upload-app \
+          --type ios \
+          --file "app/${{ inputs.filename }}" \
+          --apiKey "$ASC_API_KEY_ID" \
+          --apiIssuer "$ASC_API_ISSUER_ID"

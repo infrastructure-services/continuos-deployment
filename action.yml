@@ -118,6 +118,11 @@ inputs:
     description: "Prefijo de las variables de la app en keyvault"
     required: false
     default: ""
+  # Observabilidad
+  APM_SERVER_URL:
+    description: "Url de APM"
+    required: false
+    default: "https://apm-mon.andreani.com"
 
 outputs:
   name_environment: 

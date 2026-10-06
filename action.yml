@@ -198,6 +198,7 @@ runs:
         echo '  Observability__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  NEXT_PUBLIC_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  REACT_APP_ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
+        echo '  REACT_APP_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  ELASTIC_APM_SERVICE_NAME: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
         echo '  ElasticApm__ServiceName: ${{inputs.namespace}}_${{inputs.appName}}' >> values.yaml
 

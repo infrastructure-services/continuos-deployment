@@ -136,10 +136,11 @@ runs:
           ENVFILE: .env.${{ inputs.environment }}
           APP_SUFFIX: ${{ inputs.environment }}
           APP_NAME: ${{ steps.setOutputs.outputs.internal_name }}
+
       shell: bash
       run: |
         cd android && ${{ inputs.command }}
-
+      
     - name: Save VERSION_CODE after successful build
       uses: actions/github-script@v7
       env:
